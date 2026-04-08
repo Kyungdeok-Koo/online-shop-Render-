@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <title>마이페이지</title>
+</head>
+<body>
+    <div class="container" style="max-width: 800px;">
+        <header class="card" style="display:flex; justify-content:space-between; align-items:center;">
+            <h2>👤 마이페이지</h2>
+            <button class="btn btn-outline" style="width:auto; padding:10px 20px;" onclick="location.href='display.html'">홈으로</button>
+        </header>
+
+        <div class="card" style="background: linear-gradient(135deg, #2563eb, #1e40af); color:white; padding:40px; text-align:center; border:none;">
+            <h2 id="display-grade" style="font-size:2rem; margin-bottom:15px;">정보 로딩 중...</h2>
+            <p style="opacity:0.9;">누적 구매 금액: <span id="total-spent" style="font-weight:bold;">0</span>원</p>
+            <div style="background:rgba(255,255,255,0.2); height:12px; border-radius:6px; margin-top:25px; overflow:hidden;">
+                <div id="grade-bar" style="background:#ffd700; height:100%; width:0%; transition: width 1s ease;"></div>
+            </div>
+        </div>
+
+        <h3 style="margin: 30px 0 15px 0;">📦 주문/배송 현황</h3>
+        <div id="order-list"></div>
+    </div>
+
+    <script>
+        async function load() {
+            const userRes = await fetch('/api/user/me');
+            if(!userRes.ok) return location.href='login.html';
+            const user = await userRes.json();
+            
+            document.getElementById('display-grade').innerText = `✨ ${user.grade} ✨`;
+            document.getElementById('total-spent').innerText = user.totalSpent.toLocaleString();
+            
+            let nextGoal = user.grade === "일반회원" ? 300000 : 1000000;
+            if(user.grade === "VIP") nextGoal = user.totalSpent;
+            const percent = Math.min((user.totalSpent / nextGoal) * 100, 100);
+            setTimeout(() => document.getElementById('grade-bar').style.width = percent + "%", 200);
+
+            const orderRes = await fetch('/api/my-orders');
+            const orders = await orderRes.json();
+            const list = document.getElementById('order-list');
+            
+            if(orders.length === 0) {
+                list.innerHTML = '<div class="card" style="text-align:center; padding:50px; color:#64748b;">주문 내역이 없습니다.</div>';
+                return;
+            }
+
+            list.innerHTML = orders.reverse().map(o => {
+                // 상태별 색상 (배송중 주황색 포함)
+                const colorMap = {
+                    '결제완료': '#2563eb', 
+                    '배송중': '#f59e0b',  
+                    '배송완료': '#10b981', 
+                    '구매확정': '#8b5cf6'  
+                };
+                const statusColor = colorMap[o.status] || '#2563eb';
+                const amount = String(o.totalAmount).replace(/[^0-9]/g, '');
+
+                return `
+                    <div class="card" style="border-left: 5px solid ${statusColor};">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                            <small style="color:#64748b;">${o.orderDate}</small>
+                            <span class="badge" style="background:${statusColor}; color:white; padding:4px 8px; border-radius:4px; font-weight:bold;">${o.status}</span>
+                        </div>
+                        <p style="font-weight:bold; font-size:1.1rem; margin-bottom:5px;">${o.items.map(i => i.name).join(', ')}</p>
+                        <p style="color:#ef4444; font-weight:700;">${Number(amount).toLocaleString()}원</p>
+                        
+                        <div style="background:#f8fafc; padding:12px; border-radius:8px; margin-top:15px; font-size:0.9rem; border:1px solid #e2e8f0; line-height:1.6;">
+                            <div style="color:var(--text-sub);">수령인: <strong>${o.name || '정보없음'}</strong> (${o.phone || '정보없음'})</div>
+                            <div style="color:var(--text-sub);">주소: ${o.address || '정보없음'}</div>
+                            
+                            ${(o.status === '배송중' || o.status === '배송완료') && o.trackingNumber ? `
+                                <div style="margin-top:8px; padding-top:8px; border-top:1px dashed #ddd;">
+                                    🚚 배송 정보: <strong>${o.courier}</strong> (${o.trackingNumber})
+                                </div>
+                            ` : ''}
+                        </div>
+                        
+                        ${o.status === '배송완료' ? `
+                            <button class="btn btn-outline" style="margin-top:15px; padding:10px; width:100%; border-color:#10b981; color:#10b981;" onclick="confirmPurchase(${o.id})">✅ 구매확정 및 리뷰 쓰러 가기</button>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function confirmPurchase(orderId) {
+            if(!confirm('구매확정 시 교환 및 환불이 불가합니다. 진행하시겠습니까?')) return;
+            
+            const res = await fetch('/api/user/order-confirm', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ orderId })
+            });
+            
+            if((await res.json()).success) { 
+                alert('구매가 확정되었습니다!'); 
+                load(); 
+            }
+        }
+
+        load();
+    </script>
+</body>
+</html>

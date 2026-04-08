@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <title>계정 찾기</title>
+</head>
+<body>
+    <div class="container" style="max-width: 450px; margin-top: 5vh;">
+        <h2 style="text-align: center; margin-bottom: 20px;">계정 정보 찾기</h2>
+        <div style="display:flex; margin-bottom:15px; gap:10px;">
+            <button onclick="showTab('id')" id="tabId" class="btn btn-primary" style="flex:1;">ID 찾기</button>
+            <button onclick="showTab('pw')" id="tabPw" class="btn btn-outline" style="flex:1;">PW 찾기</button>
+        </div>
+
+        <div id="idBox" class="card">
+            <p style="color:var(--text-sub); margin-bottom:15px;">가입 시 등록한 이름과 연락처를 입력하세요.</p>
+            <input type="text" id="nameForId" placeholder="이름" style="margin-bottom:10px;">
+            <input type="tel" id="phoneForId" placeholder="연락처 (예: 010-0000-0000)">
+            <button class="btn btn-primary" style="width:100%; margin-top:15px;" onclick="findId()">아이디 찾기</button>
+        </div>
+
+        <div id="pwBox" class="card" style="display:none;">
+            <p style="color:var(--text-sub); margin-bottom:15px;">가입 시 등록한 아이디, 이름, 연락처를 입력하세요.</p>
+            <input type="text" id="idForPw" placeholder="아이디" style="margin-bottom:10px;">
+            <input type="text" id="nameForPw" placeholder="이름" style="margin-bottom:10px;">
+            <input type="tel" id="phoneForPw" placeholder="연락처 (예: 010-0000-0000)">
+            <button class="btn btn-primary" style="width:100%; margin-top:15px;" onclick="findPw()">비밀번호 찾기</button>
+        </div>
+        
+        <div style="text-align:center; margin-top:20px;">
+            <a href="login.html" style="color:var(--text-sub); text-decoration:none; font-weight:bold;">로그인으로 돌아가기</a>
+        </div>
+    </div>
+    
+    <script>
+        function showTab(t) {
+            document.getElementById('idBox').style.display = t === 'id' ? 'block' : 'none';
+            document.getElementById('pwBox').style.display = t === 'pw' ? 'block' : 'none';
+            document.getElementById('tabId').className = t === 'id' ? 'btn btn-primary' : 'btn btn-outline';
+            document.getElementById('tabPw').className = t === 'pw' ? 'btn btn-primary' : 'btn btn-outline';
+        }
+
+        async function findId() {
+            const name = document.getElementById('nameForId').value;
+            const phone = document.getElementById('phoneForId').value;
+            
+            if (!name || !phone) {
+                return alert('이름과 연락처를 모두 입력해주세요.');
+            }
+
+            try {
+                const res = await fetch('/api/find-id', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ name, phone })
+                });
+                const data = await res.json();
+                
+                if(data.success) {
+                    alert(`고객님의 아이디는 [${data.userId}] 입니다.`);
+                } else {
+                    // 실패 시 무조건 이 텍스트로 고정 출력
+                    alert("입력하신 정보는 올바르지 않습니다.");
+                }
+            } catch (error) {
+                alert("입력하신 정보는 올바르지 않습니다.");
+            }
+        }
+
+        async function findPw() {
+            const userId = document.getElementById('idForPw').value;
+            const name = document.getElementById('nameForPw').value;
+            const phone = document.getElementById('phoneForPw').value;
+
+            if (!userId || !name || !phone) {
+                return alert('아이디, 이름, 연락처를 모두 입력해주세요.');
+            }
+
+            try {
+                const res = await fetch('/api/find-pw', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ userId, name, phone })
+                });
+                const data = await res.json();
+                
+                if(data.success) {
+                    alert(`고객님의 비밀번호는 [${data.userPw}] 입니다.`);
+                } else {
+                    // 실패 시 무조건 이 텍스트로 고정 출력
+                    alert("입력하신 정보는 올바르지 않습니다.");
+                }
+            } catch (error) {
+                alert("입력하신 정보는 올바르지 않습니다.");
+            }
+        }
+    </script>
+</body>
+</html>

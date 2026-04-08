@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <title>SSAFY Mall</title>
+</head>
+<body>
+    <div class="container">
+        <header class="card" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:15px;">
+            <div>
+                <h1 style="color:var(--primary); font-weight:800; margin-bottom:5px;">SSAFY Mall</h1>
+                
+                <div id="user-greeting" style="font-size:1rem; color:var(--text-main); line-height: 1.5;">
+                    사용자 정보를 확인 중입니다...
+                </div>
+            </div>
+            
+            <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
+                <button class="btn btn-outline" onclick="location.href='my-orders.html'">마이페이지</button>
+                <button class="btn btn-primary" onclick="location.href='cart.html'">🛒 장바구니</button>
+                <button class="btn btn-outline" onclick="location.href='/api/logout'">로그아웃</button>
+            </div>
+        </header>
+
+        <div style="margin:30px 0;">
+            <h2 style="margin-bottom:20px;">✨ 프리미엄 상품 목록</h2>
+            <div class="grid" id="main-product-grid"></div>
+        </div>
+    </div>
+
+    <script>
+        async function loadMain() {
+            try {
+                // 1. 서버에서 사용자 정보를 가져와 인사말을 완성합니다.
+                const userRes = await fetch('/api/user/me');
+                if(userRes.ok) {
+                    const user = await userRes.json();
+                    document.getElementById('user-greeting').innerHTML = 
+                        `'SSAFY Mall'에 오신걸 환영합니다.<br><strong>${user.name}</strong>님, 오늘도 즐거운 쇼핑 되세요.`;
+                } else {
+                    location.href = '/';
+                    return;
+                }
+
+                // 2. 상품 목록 로드
+                const res = await fetch('/api/products');
+                const prods = await res.json();
+                
+                // [수정] 사장님이 올려주신 local 이미지가 비율에 맞게 꽉 차게 나오도록 스타일 수정 완료!
+                document.getElementById('main-product-grid').innerHTML = prods.map(p => `
+                    <div class="prod-card" onclick="viewDetail(${p.id})" style="border: 1px solid var(--border); overflow: hidden; border-radius: var(--radius);">
+                        <img src="${p.img}" alt="${p.name}" style="width:100%; height:200px; object-fit:cover; display:block;">
+                        <div style="padding:20px;">
+                            <span class="badge ${p.stock <= 0 ? 'badge-soldout' : 'badge-available'}">
+                                ${p.stock <= 0 ? '일시품절' : '판매중'}
+                            </span>
+                            <h3 style="margin:10px 0;">${p.name}</h3>
+                            <p style="color:#ef4444; font-size:1.25rem; font-weight:bold;">${p.price.toLocaleString()}원</p>
+                            <p style="font-size:0.875rem; color:var(--text-sub); margin-top:10px;">잔여 재고: ${p.stock}개</p>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('상품 로드 실패:', error);
+            }
+        }
+
+        function viewDetail(id) {
+            location.href = `detail.html?id=${id}`;
+        }
+
+        loadMain();
+    </script>
+</body>
+</html>

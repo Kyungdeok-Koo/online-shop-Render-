@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
+    <title>배송지 입력</title>
+</head>
+<body>
+    <div class="container" style="max-width: 500px; margin-top: 5vh;">
+        <h2 style="margin-bottom: 20px;">🚚 배송지 정보 입력</h2>
+        <div class="card">
+            <label style="color:var(--text-sub); font-size:0.9rem;">수령인</label>
+            <input type="text" id="name" placeholder="실명을 입력하세요" style="margin-bottom: 15px;">
+            
+            <label style="color:var(--text-sub); font-size:0.9rem;">휴대폰 번호</label>
+            <input type="tel" id="phone" placeholder="010-0000-0000" maxlength="13" oninput="autoHyphen(this)" style="margin-bottom: 15px;">
+
+            <label style="color:var(--text-sub); font-size:0.9rem;">배송 주소</label>
+            <div style="display:flex; gap:10px; margin-bottom: 10px;">
+                <input type="text" id="addr" placeholder="주소를 검색하세요" readonly style="flex:1;">
+                <button class="btn btn-outline" style="width:auto; padding:10px 20px;" onclick="searchAddr()">주소 검색</button>
+            </div>
+            <input type="text" id="addr-detail" placeholder="상세 주소를 입력하세요">
+
+            <button class="btn btn-primary" style="margin-top:25px; width:100%; height:50px; font-size:1.1rem;" onclick="saveAndPay()">결제 단계로 이동</button>
+        </div>
+    </div>
+
+    <script>
+        // 연락처 자동 하이픈 로직
+        function autoHyphen(t) {
+            let v = t.value.replace(/[^0-9]/g, ''); 
+            let r = v.length < 4 ? v : v.length < 8 ? v.substring(0,3)+"-"+v.substring(3) : v.substring(0,3)+"-"+v.substring(3,7)+"-"+v.substring(7,11);
+            t.value = r;
+        }
+
+        // 다음 우편번호 API 연동
+        function searchAddr() {
+            new daum.Postcode({
+                oncomplete: function(data) {
+                    document.getElementById('addr').value = data.address;
+                }
+            }).open();
+        }
+
+        function saveAndPay() {
+            const info = {
+                name: document.getElementById('name').value,
+                phone: document.getElementById('phone').value,
+                address: document.getElementById('addr').value + " " + document.getElementById('addr-detail').value
+            };
+            
+            if(!info.name || !document.getElementById('phone').value || !document.getElementById('addr').value) {
+                return alert('모든 정보를 정확히 입력해주세요.');
+            }
+            
+            // pay.html로 넘기기 위해 임시 저장소 활용
+            sessionStorage.setItem('orderInfo', JSON.stringify(info));
+            location.href = `pay.html`;
+        }
+    </script>
+</body>
+</html>

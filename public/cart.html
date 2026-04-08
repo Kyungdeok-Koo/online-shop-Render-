@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <title>장바구니</title>
+</head>
+<body>
+    <div class="container" style="max-width: 800px;">
+        <header style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h2>🛒 나의 장바구니</h2>
+            <button class="btn btn-outline" onclick="location.href='display.html'">쇼핑 계속하기</button>
+        </header>
+
+        <div id="cart-list" class="card" style="min-height:200px; padding:10px 24px;"></div>
+        
+        <div class="card" style="margin-top:20px; text-align:right; background:#f8fafc; border:2px solid #e2e8f0;">
+            <h3 style="font-size:1.5rem; margin-bottom:20px;">총 결제 예정 금액: <span id="total-price" style="color:#ef4444; font-size:2rem;">0</span>원</h3>
+            <button class="btn btn-primary" onclick="goOrder()" style="width:100%; height:60px; font-size:1.2rem;">주문 진행하기</button>
+        </div>
+    </div>
+    <script>
+        function render() {
+            const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+            const listDiv = document.getElementById('cart-list');
+            if(cart.length === 0) {
+                listDiv.innerHTML = '<div style="text-align:center; padding:60px 0; color:var(--text-sub);">장바구니가 텅 비어있습니다.</div>';
+                document.getElementById('total-price').innerText = '0';
+                return;
+            }
+            listDiv.innerHTML = cart.map((item, idx) => `
+                <div style="display:flex; align-items:center; gap:20px; border-bottom:1px solid #f1f5f9; padding:20px 0; flex-wrap:wrap;">
+                    <img src="${item.img}" style="width:100px; height:100px; object-fit:cover; border-radius:8px;">
+                    <div style="flex:1; min-width:200px;">
+                        <h4 style="font-size:1.2rem; margin-bottom:5px;">${item.name}</h4>
+                        <p style="color:var(--text-sub); font-weight:bold;">${item.price.toLocaleString()}원</p>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:10px; background:#f1f5f9; padding:5px 10px; border-radius:8px;">
+                        <button onclick="changeQty(${idx}, -1)" style="border:none; background:white; width:30px; height:30px; border-radius:4px; font-weight:bold; cursor:pointer;">-</button>
+                        <span style="font-weight:bold; width:20px; text-align:center;">${item.count}</span>
+                        <button onclick="changeQty(${idx}, 1)" style="border:none; background:white; width:30px; height:30px; border-radius:4px; font-weight:bold; cursor:pointer;">+</button>
+                    </div>
+                    <button onclick="removeItem(${idx})" class="btn" style="background:#ef4444; color:white; padding:10px 15px;">삭제</button>
+                </div>
+            `).join('');
+            
+            const total = cart.reduce((s, i) => s + (i.price * i.count), 0);
+            document.getElementById('total-price').innerText = total.toLocaleString();
+        }
+
+        function changeQty(idx, val) {
+            let cart = JSON.parse(localStorage.getItem('cart'));
+            cart[idx].count += val;
+            if(cart[idx].count < 1) cart[idx].count = 1;
+            localStorage.setItem('cart', JSON.stringify(cart));
+            render();
+        }
+
+        function removeItem(idx) {
+            let cart = JSON.parse(localStorage.getItem('cart'));
+            cart.splice(idx, 1);
+            localStorage.setItem('cart', JSON.stringify(cart));
+            render();
+        }
+
+        function goOrder() {
+            const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+            if(cart.length === 0) return alert('장바구니가 비어있습니다.');
+            location.href = 'info.html';
+        }
+        render();
+    </script>
+</body>
+</html>

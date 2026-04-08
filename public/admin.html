@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="style.css">
+    <title>ADMIN PANEL</title>
+</head>
+<body>
+    <div class="container" style="max-width: 1100px;">
+        <header class="card" style="display:flex; justify-content:space-between; align-items:center;">
+            <h2>🚀 ADMIN DASHBOARD</h2>
+            <button class="btn btn-primary" style="width:auto;" onclick="location.href='/api/admin/excel'">📊 엑셀 다운로드</button>
+        </header>
+
+        <div class="card">
+            <table style="width:100%; text-align:left; border-collapse: collapse;">
+                <thead>
+                    <tr style="border-bottom: 2px solid #eee;">
+                        <th style="padding:15px; width:15%;">주문자/날짜</th>
+                        <th style="padding:15px; width:35%;">배송지 정보 (연락처/주소)</th>
+                        <th style="padding:15px; width:25%;">상품정보/금액</th>
+                        <th style="padding:15px; width:25%;">상태 및 송장 관리</th>
+                    </tr>
+                </thead>
+                <tbody id="admin-order-rows"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        async function loadAdmin() {
+            const res = await fetch('/api/admin/orders');
+            const orders = await res.json();
+            document.getElementById('admin-order-rows').innerHTML = orders.reverse().map(o => `
+                <tr style="border-bottom: 1px solid #f1f5f9;">
+                    <td style="padding:15px;">
+                        <b style="font-size:1.1rem;">${o.name}</b><br>
+                        <small style="color:var(--text-sub);">${o.orderDate}</small>
+                    </td>
+                    
+                    <td style="padding:15px; line-height:1.5;">
+                        <b style="color:var(--primary);">📞 ${o.phone || '정보 없음'}</b><br>
+                        <small style="color:var(--text-main);">📍 ${o.address || '정보 없음'}</small>
+                    </td>
+                    
+                    <td style="padding:15px;">
+                        ${o.items.map(i => i.name).join(', ')}<br>
+                        <strong style="color:#ef4444; margin-top:5px; display:inline-block;">${o.totalAmount}</strong>
+                    </td>
+                    
+                    <td style="padding:15px;">
+                        <select onchange="updateStatus('${o.id}', this.value)" style="padding:8px; border-radius:5px; border:1px solid #cbd5e1; width:100%;">
+                            <option value="결제완료" ${o.status==='결제완료'?'selected':''}>결제완료</option>
+                            <option value="배송중" ${o.status==='배송중'?'selected':''}>배송중</option>
+                            <option value="배송완료" ${o.status==='배송완료'?'selected':''}>배송완료</option>
+                            <option value="구매확정" ${o.status==='구매확정'?'selected':''} disabled>구매확정 (고객 전용)</option>
+                        </select>
+                        
+                        ${o.trackingNumber ? `
+                            <div style="margin-top:10px; padding:10px; background:#f8fafc; border-radius:6px; font-size:0.85rem; border:1px solid #e2e8f0;">
+                                <strong style="color:var(--primary);">🚚 ${o.courier}</strong><br>
+                                <span style="color:var(--text-sub);">송장: ${o.trackingNumber}</span>
+                            </div>
+                        ` : ''}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function updateStatus(orderId, status) {
+            let courier = '';
+            let trackingNumber = '';
+
+            // 배송중 선택 시 팝업 띄우기
+            if (status === '배송중') {
+                courier = prompt('📦 택배사 이름을 입력하세요 (예: CJ대한통운, 우체국택배 등):', 'CJ대한통운');
+                if (courier === null) return loadAdmin(); 
+                
+                trackingNumber = prompt('🔢 운송장 번호를 입력하세요:', '');
+                if (trackingNumber === null) return loadAdmin(); 
+            }
+
+            const res = await fetch('/api/admin/order-status', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ orderId, status, courier, trackingNumber })
+            });
+            
+            if(res.ok) {
+                alert('주문 상태 및 송장 정보가 업데이트 되었습니다.');
+                loadAdmin();
+            }
+        }
+
+        loadAdmin();
+    </script>
+</body>
+</html>

@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <title>상품 상세 - SSAFY Mall</title>
+</head>
+<body>
+    <div class="container" style="max-width: 900px;">
+        <header style="margin-bottom:20px;">
+            <button class="btn btn-outline" style="width:auto; padding:10px 20px;" onclick="location.href='display.html'">← 목록으로</button>
+        </header>
+        
+        <div class="card" style="display:flex; flex-wrap:wrap; gap:40px; padding:40px;">
+            <img id="p-img" style="width:100%; max-width:400px; height:400px; object-fit:cover; border-radius:var(--radius);">
+            <div style="flex:1; min-width:300px;">
+                <h2 id="p-name" style="font-size:2rem; margin:15px 0;"></h2>
+                <p id="p-desc" style="color:var(--text-sub); margin-bottom:25px;"></p>
+                <h3 id="p-price" style="color:#ef4444; font-size:2.5rem; font-weight:800; margin-bottom:30px;"></h3>
+                <div style="display:flex; gap:15px;">
+                    <input type="number" id="p-count" value="1" min="1" style="width:80px; text-align:center;">
+                    <button class="btn btn-primary" style="flex:1;" onclick="addToCart()">장바구니 담기</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card" style="margin-top:20px;">
+            <h3 style="margin-bottom:20px;">📜 상품 구매 후기</h3>
+            <div style="background:#f8fafc; padding:25px; border-radius:10px; margin-bottom:30px;">
+                <p style="font-size:0.85rem; color:var(--text-sub); margin-bottom:12px;">💡 구매확정 고객님만 작성이 가능합니다.</p>
+                <div style="display:flex; gap:10px;">
+                    <input type="text" id="review-input" placeholder="후기를 작성해주세요." style="flex:1; margin:0;">
+                    <button class="btn btn-primary" style="width:auto; padding:0 30px;" onclick="postReview()">등록</button>
+                </div>
+            </div>
+            <div id="review-list"></div>
+        </div>
+    </div>
+
+    <script>
+        const productId = new URLSearchParams(window.location.search).get('id');
+        let currentProduct = null;
+
+        async function init() {
+            const res = await fetch('/api/products/' + productId);
+            currentProduct = await res.json();
+            document.getElementById('p-img').src = currentProduct.img;
+            document.getElementById('p-name').innerText = currentProduct.name;
+            document.getElementById('p-desc').innerText = currentProduct.desc;
+            document.getElementById('p-price').innerText = currentProduct.price.toLocaleString() + "원";
+            loadReviews();
+        }
+
+        async function loadReviews() {
+            const res = await fetch('/api/reviews/' + productId);
+            const data = await res.json();
+            const list = document.getElementById('review-list');
+            
+            if(data.reviews.length === 0) {
+                return list.innerHTML = '<p style="text-align:center; color:var(--text-sub); padding:20px;">첫 후기를 기다리고 있습니다.</p>';
+            }
+            
+            list.innerHTML = data.reviews.reverse().map(r => `
+                <div style="border-bottom:1px solid #f1f5f9; padding:20px 0;">
+                    <strong style="color:var(--primary);">${r.userId}</strong> <small style="color:var(--text-sub); margin-left:10px;">${r.date}</small>
+                    <p style="margin-top:10px;">${r.content}</p>
+                </div>
+            `).join('');
+        }
+
+        async function postReview() {
+            const content = document.getElementById('review-input').value;
+            if(!content) return alert('후기 내용을 입력해주세요.');
+
+            const res = await fetch('/api/reviews', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ productId, content })
+            });
+            const data = await res.json();
+            
+            if(data.success) { 
+                document.getElementById('review-input').value = ''; 
+                loadReviews(); 
+                alert('후기가 정상적으로 등록되었습니다.');
+            } else {
+                // 서버에서 '구매확정' 여부를 검사 후 차단 시 알림
+                alert(data.message); 
+            }
+        }
+
+        function addToCart() {
+            if(!currentProduct || currentProduct.stock <= 0) return alert('품절된 상품입니다.');
+            const count = parseInt(document.getElementById('p-count').value);
+            let cart = JSON.parse(localStorage.getItem('cart') || '[]');
+            
+            const idx = cart.findIndex(i => i.id === currentProduct.id);
+            if(idx > -1) cart[idx].count += count;
+            else cart.push({ ...currentProduct, count });
+            
+            localStorage.setItem('cart', JSON.stringify(cart));
+            if(confirm('장바구니에 담겼습니다. 장바구니로 이동하시겠습니까?')) location.href='cart.html';
+        }
+        
+        init();
+    </script>
+</body>
+</html>

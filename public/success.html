@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <title>결제 성공</title>
+</head>
+<body style="display:flex; justify-content:center; align-items:center; height:100vh; background:#f8fafc;">
+    <div class="card" style="text-align:center; padding: 50px; max-width: 400px; width: 100%;">
+        <h1 style="color: #10b981; margin-bottom: 15px;">결제 성공! 🎉</h1>
+        <p style="color: var(--text-sub); margin-bottom: 30px;">주문 정보를 안전하게 서버에 저장하고 있습니다...</p>
+        <div id="loading" style="font-size: 2.5rem; animation: spin 1s infinite;">⏳</div>
+    </div>
+
+    <script>
+        async function processOrder() {
+            try {
+                // 로컬스토리지에서 담아둔 장바구니와 배송지 정보 가져오기
+                const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+                const info = JSON.parse(localStorage.getItem('shippingInfo') || '{}');
+                
+                // 토스페이먼츠에서 넘겨준 결제 금액 확인
+                const urlParams = new URLSearchParams(window.location.search);
+                const amount = urlParams.get('amount');
+
+                if (cart.length > 0) {
+                    // 서버(/api/order)에 주문 정보 저장 요청
+                    const res = await fetch('/api/order', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            items: cart,
+                            totalAmount: amount,
+                            name: info.name,
+                            address: info.address,
+                            phone: info.phone
+                        })
+                    });
+
+                    if(res.ok) {
+                        // 저장이 끝나면 장바구니 비우고 마이페이지로 이동!
+                        localStorage.removeItem('cart'); 
+                        localStorage.removeItem('shippingInfo');
+                        alert('주문이 정상적으로 완료되었습니다!');
+                        location.href = 'my-orders.html';
+                    } else {
+                        alert('주문 저장에 실패했습니다. 관리자에게 문의하세요.');
+                        location.href = 'cart.html';
+                    }
+                } else {
+                    location.href = 'my-orders.html';
+                }
+            } catch (e) {
+                alert('오류가 발생했습니다.');
+                location.href = 'cart.html';
+            }
+        }
+
+        // 페이지 로드 1.5초 후 주문 저장 로직 실행 (로딩 UI를 보여주기 위함)
+        setTimeout(processOrder, 1500); 
+    </script>
+</body>
+</html>
