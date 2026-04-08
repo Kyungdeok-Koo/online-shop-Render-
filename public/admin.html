@@ -2,8 +2,12 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="style.css">
-    <title>ADMIN PANEL</title>
+    
+    <title>SSAFY Mall 관리자 센터</title>
+    <meta property="og:title" content="SSAFY Mall 관리자 센터">
+    <meta property="og:description" content="SSAFY Mall 주문 및 배송 관리 대시보드입니다.">
 </head>
 <body>
     <div class="container" style="max-width: 1100px;">
@@ -33,7 +37,7 @@
     <script>
         async function loadAdmin() {
             const res = await fetch('/api/admin/orders');
-            // ✨ API 요청이 거부되면 메인으로 쫓아냅니다
+            // API 요청이 거부되면 메인으로 쫓아냅니다
             if (!res.ok) {
                 alert('관리자 로그인이 필요합니다.');
                 location.href = '/';
@@ -95,7 +99,7 @@
                 body: JSON.stringify({ orderId, status, courier, trackingNumber })
             });
             
-            // ✨ 업데이트 시에도 권한을 검사합니다
+            // 업데이트 시 권한 검사
             if(res.ok) {
                 alert('주문 상태 및 송장 정보가 업데이트 되었습니다.');
                 loadAdmin();
