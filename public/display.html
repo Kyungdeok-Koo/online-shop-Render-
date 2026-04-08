@@ -4,7 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="style.css">
-    <title>SSAFY Mall</title>
+    
+    <title>SSAFY Mall - 프리미엄 장비 쇼핑몰</title>
+    <meta property="og:title" content="SSAFY Mall">
+    <meta property="og:description" content="개발자와 직장인을 위한 최고의 장비, SSAFY Mall에서 만나보세요!">
+    <meta property="og:image" content="https://ssafymall.onrender.com/uploads/keyboard.jpg">
 </head>
 <body>
     <div class="container">
@@ -25,31 +29,56 @@
         </header>
 
         <div style="margin:30px 0;">
-            <h2 style="margin-bottom:20px;">✨ 프리미엄 상품 목록</h2>
-            <div class="grid" id="main-product-grid"></div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h2 style="font-size:1.5rem;">🔥 이달의 추천 상품</h2>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn btn-outline" style="width:auto; padding:5px 15px; font-size:0.9rem;" onclick="loadProducts()">전체보기</button>
+                    <button class="btn btn-outline" style="width:auto; padding:5px 15px; font-size:0.9rem;" onclick="filterCategory('전자제품')">가전/디지털</button>
+                    <button class="btn btn-outline" style="width:auto; padding:5px 15px; font-size:0.9rem;" onclick="filterCategory('가구')">가구/인테리어</button>
+                </div>
+            </div>
+            <div class="product-grid" id="main-product-grid"></div>
+        </div>
+        
+        <div class="card" style="margin-top:40px; background:#f8fafc; border:none; text-align:center;">
+            <h3>💬 궁금한 점이 있으신가요?</h3>
+            <p style="color:var(--text-sub); margin-bottom:15px;">고객 센터는 24시간 열려있습니다.</p>
+            <button class="btn btn-outline" style="width:auto; padding:10px 30px;" onclick="location.href='qna.html'">Q&A 게시판 바로가기</button>
         </div>
     </div>
 
     <script>
-        async function loadMain() {
+        async function loadUser() {
             try {
-                // 1. 서버에서 사용자 정보를 가져와 인사말을 완성합니다.
-                const userRes = await fetch('/api/user/me');
-                if(userRes.ok) {
-                    const user = await userRes.json();
-                    document.getElementById('user-greeting').innerHTML = 
-                        `'SSAFY Mall'에 오신걸 환영합니다.<br><strong>${user.name}</strong>님, 오늘도 즐거운 쇼핑 되세요.`;
-                } else {
-                    location.href = '/';
+                const res = await fetch('/api/user/me');
+                if(!res.ok) return location.href='/';
+                const user = await res.json();
+                document.getElementById('user-greeting').innerHTML = `
+                    👋 안녕하세요, <strong>${user.name}</strong>님!<br>
+                    현재 등급은 <span class="badge" style="background:var(--primary); color:white;">${user.grade}</span> 입니다.
+                `;
+            } catch (error) {
+                console.error('사용자 정보 로드 실패:', error);
+                location.href='/';
+            }
+        }
+
+        async function loadProducts(category = null) {
+            try {
+                const res = await fetch('/api/products');
+                let prods = await res.json();
+                
+                if(category) {
+                    prods = prods.filter(p => p.category === category);
+                }
+
+                const grid = document.getElementById('main-product-grid');
+                if(prods.length === 0) {
+                    grid.innerHTML = '<p style="text-align:center; padding:50px; color:var(--text-sub);">상품이 없습니다.</p>';
                     return;
                 }
 
-                // 2. 상품 목록 로드
-                const res = await fetch('/api/products');
-                const prods = await res.json();
-                
-                // [수정] 사장님이 올려주신 local 이미지가 비율에 맞게 꽉 차게 나오도록 스타일 수정 완료!
-                document.getElementById('main-product-grid').innerHTML = prods.map(p => `
+                grid.innerHTML = prods.map(p => `
                     <div class="prod-card" onclick="viewDetail(${p.id})" style="border: 1px solid var(--border); overflow: hidden; border-radius: var(--radius);">
                         <img src="${p.img}" alt="${p.name}" style="width:100%; height:200px; object-fit:cover; display:block;">
                         <div style="padding:20px;">
@@ -67,11 +96,16 @@
             }
         }
 
+        function filterCategory(cat) {
+            loadProducts(cat);
+        }
+
         function viewDetail(id) {
             location.href = `detail.html?id=${id}`;
         }
 
-        loadMain();
+        loadUser();
+        loadProducts();
     </script>
 </body>
 </html>
