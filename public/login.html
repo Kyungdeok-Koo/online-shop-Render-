@@ -4,7 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="style.css">
-    <title>로그인 - SSAFY Mall</title>
+    
+    <title>SSAFY Mall - 프리미엄 쇼핑의 시작</title>
+    <meta property="og:title" content="SSAFY Mall">
+    <meta property="og:description" content="개발자를 위한 최고의 장비, SSAFY Mall에서 만나보세요!">
+    <meta property="og:image" content="https://ssafymall.onrender.com/uploads/keyboard.jpg">
+    
     <style>
         .modal-overlay { 
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
@@ -97,8 +102,8 @@
     </div>
 
     <script>
-        let foundUserIdTemp = ""; // 아이디 전달용
-        let foundUserPwTemp = ""; // 비밀번호 전달용
+        let foundUserIdTemp = ""; 
+        let foundUserPwTemp = ""; 
 
         function openModal(id) { 
             const rb = document.getElementById(id.replace('-modal', '-result'));
@@ -112,7 +117,6 @@
             if(id === 'find-pw-modal') {
                 const btn = document.getElementById('find-pw-submit-btn');
                 btn.innerText = '비밀번호 찾기'; btn.onclick = findPw;
-                // [핵심] 창을 열 때, 찾은 아이디가 있다면 즉시 입력칸에 넣어줍니다.
                 if(foundUserIdTemp) {
                     document.getElementById('find-pw-id').value = foundUserIdTemp;
                 }
@@ -121,7 +125,6 @@
         }
         
         function closeModal(id) { 
-            // 창을 닫을 때 입력값들을 초기화하되, 전달용 변수는 유지합니다.
             document.querySelectorAll(`#${id} input`).forEach(i => i.value = '');
             const rb = document.getElementById(id.replace('-modal', '-result'));
             if(rb) { rb.innerHTML = ''; rb.style.opacity = '0'; }
@@ -141,13 +144,13 @@
             const res = await fetch('/api/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userId, userPw}) });
             const data = await res.json();
             if(data.success) {
-                // ✨ admin 계정 확인 시 관리자 페이지로 자동 이동, 아니면 메인으로 이동
+                // admin 계정 확인 시 관리자 페이지로 자동 이동, 아니면 메인으로 이동
                 if(userId === 'admin') {
                     location.href = '/admin';
                 } else {
                     location.href = 'display.html';
                 }
-                foundUserIdTemp = ""; foundUserPwTemp = ""; // 로그인 성공 시 데이터 파기
+                foundUserIdTemp = ""; foundUserPwTemp = ""; 
             } else alert(data.message);
         }
 
@@ -174,11 +177,10 @@
                 const res = await fetch('/api/find-id', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({name, phone}) });
                 const data = await res.json();
                 if(data.success) { 
-                    foundUserIdTemp = data.userId; // 아이디를 전달용 변수에 저장 (절대 미리 지우지 않음)
+                    foundUserIdTemp = data.userId; 
                     rb.innerHTML = `<div class="result-label">귀하의 아이디는 아래와 같습니다.</div><div class="result-value">${data.userId}</div>`; 
                     btn.innerText = '비밀번호 찾기';
                     btn.onclick = () => { 
-                        // [수정] 모달을 닫고 여는 시점에 데이터를 지우지 않도록 순서 조정
                         document.getElementById('find-id-modal').style.display = 'none'; 
                         openModal('find-pw-modal'); 
                     };
