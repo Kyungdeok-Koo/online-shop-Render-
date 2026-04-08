@@ -141,7 +141,12 @@
             const res = await fetch('/api/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userId, userPw}) });
             const data = await res.json();
             if(data.success) {
-                location.href = 'display.html';
+                // ✨ admin 계정 확인 시 관리자 페이지로 자동 이동, 아니면 메인으로 이동
+                if(userId === 'admin') {
+                    location.href = '/admin';
+                } else {
+                    location.href = 'display.html';
+                }
                 foundUserIdTemp = ""; foundUserPwTemp = ""; // 로그인 성공 시 데이터 파기
             } else alert(data.message);
         }

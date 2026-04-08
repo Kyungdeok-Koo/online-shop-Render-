@@ -9,7 +9,10 @@
     <div class="container" style="max-width: 1100px;">
         <header class="card" style="display:flex; justify-content:space-between; align-items:center;">
             <h2>🚀 ADMIN DASHBOARD</h2>
-            <button class="btn btn-primary" style="width:auto;" onclick="location.href='/api/admin/excel'">📊 엑셀 다운로드</button>
+            <div style="display:flex; gap:10px;">
+                <button class="btn btn-primary" style="width:auto;" onclick="location.href='/api/admin/excel'">📊 엑셀 다운로드</button>
+                <button class="btn btn-outline" style="width:auto; border-color:#ef4444; color:#ef4444;" onclick="location.href='/api/logout'">🔓 로그아웃</button>
+            </div>
         </header>
 
         <div class="card">
@@ -30,6 +33,12 @@
     <script>
         async function loadAdmin() {
             const res = await fetch('/api/admin/orders');
+            // ✨ API 요청이 거부되면 메인으로 쫓아냅니다
+            if (!res.ok) {
+                alert('관리자 로그인이 필요합니다.');
+                location.href = '/';
+                return;
+            }
             const orders = await res.json();
             document.getElementById('admin-order-rows').innerHTML = orders.reverse().map(o => `
                 <tr style="border-bottom: 1px solid #f1f5f9;">
@@ -86,9 +95,12 @@
                 body: JSON.stringify({ orderId, status, courier, trackingNumber })
             });
             
+            // ✨ 업데이트 시에도 권한을 검사합니다
             if(res.ok) {
                 alert('주문 상태 및 송장 정보가 업데이트 되었습니다.');
                 loadAdmin();
+            } else {
+                alert('업데이트 권한이 없습니다.');
             }
         }
 
