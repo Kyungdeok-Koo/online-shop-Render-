@@ -8,7 +8,6 @@
     <title>SSAFY Mall - 프리미엄 쇼핑의 시작</title>
     <meta property="og:title" content="SSAFY Mall">
     <meta property="og:description" content="개발자를 위한 최고의 장비, SSAFY Mall에서 만나보세요!">
-    <meta property="og:image" content="https://ssafymall.onrender.com/uploads/keyboard.jpg">
     
     <style>
         .modal-overlay { 
@@ -61,10 +60,16 @@
     <div id="signup-modal" class="modal-overlay">
         <div class="modal-content">
             <h3 class="modal-title">📝 회원가입</h3>
-            <div class="form-group"><input type="text" id="signup-id" placeholder="아이디 (대/소문자 및 공백 주의)"></div>
+            
+            <div class="form-group" style="display:flex; gap:10px;">
+                <input type="text" id="signup-id" placeholder="아이디 (대/소문자 및 공백 주의)" style="flex:1;" oninput="resetIdCheck()">
+                <button type="button" style="width:90px; border:1px solid #3b82f6; background:white; color:#3b82f6; border-radius:5px; cursor:pointer; font-weight:bold; font-size:0.9rem;" onclick="checkDuplicateId()">중복확인</button>
+            </div>
+            
             <div class="form-group"><input type="password" id="signup-pw" placeholder="비밀번호 (영문/숫자/기호를 조합하여 최소 8자리 이상)"></div>
             <div class="form-group"><input type="text" id="signup-name" placeholder="이름 (대/소문자 및 공백 주의)"></div>
             <div class="form-group"><input type="text" id="signup-phone" placeholder="핸드폰 번호 (숫자만 입력)" oninput="autoHyphen(this)" maxlength="13"></div>
+            
             <div style="display:flex; gap:10px; margin-top:20px;">
                 <button class="btn btn-primary" style="flex:1; height:45px;" onclick="signup()">가입하기</button>
                 <button class="btn btn-outline" style="flex:1; height:45px;" onclick="closeModal('signup-modal')">취소</button>
@@ -104,11 +109,45 @@
     <script>
         let foundUserIdTemp = ""; 
         let foundUserPwTemp = ""; 
+        
+        // ✨ [추가] 중복확인 완료 여부 저장 변수
+        let isIdChecked = false; 
+
+        // 사용자가 아이디를 수정하면 중복확인을 다시 하도록 초기화
+        function resetIdCheck() {
+            isIdChecked = false;
+        }
+
+        // ✨ [추가] 중복확인 버튼 클릭 시 실행되는 함수
+        async function checkDuplicateId() {
+            const userId = document.getElementById('signup-id').value;
+            if(!userId) return alert('아이디를 먼저 입력해주세요.');
+
+            const res = await fetch('/api/check-id', { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify({ userId }) 
+            });
+            const data = await res.json();
+
+            if(data.success) {
+                alert('사용 가능한 아이디입니다! ✅');
+                isIdChecked = true;
+            } else {
+                alert('이미 사용 중인 아이디입니다. ❌ 다른 아이디를 입력해주세요.');
+                isIdChecked = false;
+                document.getElementById('signup-id').value = ""; // 중복이면 칸 비우기
+            }
+        }
 
         function openModal(id) { 
             const rb = document.getElementById(id.replace('-modal', '-result'));
             if(rb) { rb.innerHTML = ''; rb.style.opacity = '0'; }
             
+            if(id === 'signup-modal') {
+                isIdChecked = false; // 창 열때 초기화
+            }
+
             if(id === 'find-id-modal') {
                 const btn = document.getElementById('find-id-submit-btn');
                 btn.innerText = '아이디 찾기'; btn.onclick = findId;
@@ -144,12 +183,8 @@
             const res = await fetch('/api/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userId, userPw}) });
             const data = await res.json();
             if(data.success) {
-                // admin 계정 확인 시 관리자 페이지로 자동 이동, 아니면 메인으로 이동
-                if(userId === 'admin') {
-                    location.href = '/admin';
-                } else {
-                    location.href = 'display.html';
-                }
+                if(userId === 'admin') location.href = '/admin';
+                else location.href = 'display.html';
                 foundUserIdTemp = ""; foundUserPwTemp = ""; 
             } else alert(data.message);
         }
@@ -159,10 +194,20 @@
             const userPw = document.getElementById('signup-pw').value;
             const userName = document.getElementById('signup-name').value;
             const userPhone = document.getElementById('signup-phone').value;
+            
             if(!userId || !userPw || !userName || !userPhone) return alert('모든 항목을 입력해주세요.');
+            
+            // ✨ [추가] 중복확인을 안 했으면 가입 차단
+            if(!isIdChecked) {
+                return alert('아이디 중복확인 버튼을 눌러주세요!');
+            }
+
             const res = await fetch('/api/signup', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userId, userPw, userName, userPhone}) });
             const data = await res.json();
-            if(data.success) { alert('가입 완료!'); closeModal('signup-modal'); } 
+            if(data.success) { 
+                alert('가입 완료! 환영합니다.'); 
+                closeModal('signup-modal'); 
+            } 
             else alert(data.message);
         }
 
