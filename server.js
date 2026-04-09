@@ -116,6 +116,15 @@ app.post('/api/reviews', checkLogin, async (req, res) => {
 });
 
 // ==========================================
+// 💡 [추가] 아이디 중복확인 전용 API
+// ==========================================
+app.post('/api/check-id', async (req, res) => {
+    const user = await User.findOne({ id: req.body.userId });
+    if(user) res.json({ success: false }); // 중복됨
+    else res.json({ success: true });      // 사용 가능
+});
+
+// ==========================================
 // 3. 회원 및 인증 API (아이디/비번 찾기 포함)
 // ==========================================
 app.post('/api/signup', async (req, res) => {
