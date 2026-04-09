@@ -29,7 +29,7 @@ if (!fs.existsSync(uploadsPath)) fs.mkdirSync(uploadsPath);
 // ✨ 1-1. MongoDB 연결 및 스키마 설정
 // ==========================================
 // 🚨 아래 <password> 부분을 대표님의 진짜 비밀번호로 바꿔주세요!
-const MONGO_URI = "mongodb+srv://kkdlove999_dk_9:<password>@cluster0.rx5jxnx.mongodb.net/?appName=Cluster0";
+const MONGO_URI = "mongodb+srv://kkdlove999_dk_9:qlfeld2323!@cluster0.rx5jxnx.mongodb.net/?appName=Cluster0";
 
 mongoose.connect(MONGO_URI)
     .then(() => console.log("✅ MongoDB 연결 성공! (데이터 영구 보존 모드)"))
