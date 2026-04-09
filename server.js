@@ -26,6 +26,13 @@ const upload = multer({ dest: uploadsPath });
 if (!fs.existsSync(uploadsPath)) fs.mkdirSync(uploadsPath);
 
 // ==========================================
+// 💡 [추가] 한국 시간(KST)을 정확하게 가져오는 함수
+// ==========================================
+const getKoreaTime = () => {
+    return new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
+};
+
+// ==========================================
 // ✨ 1-1. MongoDB 연결 및 스키마 설정
 // ==========================================
 // 🚨 아래 <password> 부분을 대표님의 진짜 비밀번호로 바꿔주세요!
@@ -56,8 +63,6 @@ const Qna = mongoose.model('Qna', new mongoose.Schema({
 // ==========================================
 // 1. 데이터베이스 세팅 (가격 120, 90, 150 반영)
 // ==========================================
-// db_users, db_orders, db_reviews, db_qna는 이제 모두 MongoDB가 안전하게 보관합니다.
-
 let db_products = [
     { id: 1, name: "고급 기계식 키보드", price: 120, category: "전자제품", img: "/uploads/keyboard.jpg", desc: "최고의 타건감, 개발자 필수 아이템.", stock: 50 },
     { id: 2, name: "인체공학 무선 마우스", price: 90, category: "전자제품", img: "/uploads/mouse.jpg", desc: "손목이 편안한 인체공학 설계.", stock: 100 },
@@ -87,11 +92,10 @@ app.get('/api/reviews/:productId', async (req, res) => {
     res.json({ reviews });
 });
 
-// [복구 완료] 구매확정 시에만 후기 작성 허용 로직
+// [복구 완료] 구매확정 시에만 후기 작성 허용 로직 + 한국 시간 적용
 app.post('/api/reviews', checkLogin, async (req, res) => {
     const { productId, content } = req.body;
     
-    // 사용자의 모든 주문을 불러와서 구매확정 상태이고 해당 상품이 있는지 검사
     const userOrders = await Order.find({ userId: req.session.userId, status: "구매확정" });
     const hasPurchased = userOrders.some(o => 
         o.items.some(item => String(item.id) === String(productId))
@@ -105,7 +109,7 @@ app.post('/api/reviews', checkLogin, async (req, res) => {
         productId, 
         content, 
         userId: req.session.userId, 
-        date: new Date().toLocaleString() 
+        date: getKoreaTime() // ✨ 한국 시간 적용
     }).save();
     
     res.json({ success: true });
@@ -122,12 +126,20 @@ app.post('/api/signup', async (req, res) => {
         return res.json({ success: false, message: "핸드폰 번호 형식이 올바르지 않습니다." });
     }
     
-    const existingUser = await User.findOne({ id: userId });
+    // ✨ [수정] 아이디 또는 연락처가 이미 존재하는지 동시 검사
+    const existingUser = await User.findOne({ $or: [{ id: userId }, { phone: userPhone }] });
+    
     if(existingUser) {
-        return res.json({ success: false, message: "이미 사용 중인 아이디입니다." });
+        if(existingUser.id === userId) {
+            return res.json({ success: false, message: "이미 사용 중인 아이디입니다." });
+        }
+        if(existingUser.phone === userPhone) {
+            return res.json({ success: false, message: "이미 가입된 연락처입니다." });
+        }
     }
     
-    await new User({ id: userId, pw: userPw, name: userName, phone: userPhone, joinDate: new Date().toLocaleString() }).save();
+    // ✨ [수정] 한국 시간 적용
+    await new User({ id: userId, pw: userPw, name: userName, phone: userPhone, joinDate: getKoreaTime() }).save();
     res.json({ success: true });
 });
 
@@ -206,7 +218,7 @@ app.post('/api/order', checkLogin, async (req, res) => {
     await new Order({ 
         id: Date.now(), 
         userId: req.session.userId, 
-        orderDate: new Date().toLocaleString(), 
+        orderDate: getKoreaTime(), // ✨ [수정] 한국 시간 적용
         items, 
         totalAmount, 
         name, 
@@ -310,7 +322,7 @@ app.get('/api/admin/excel', async (req, res) => {
 });
 
 // ==========================================
-// 7. Q&A 게시판 및 라우팅
+// 7. Q&A 게시판 및 라우팅 + 한국 시간 적용
 // ==========================================
 app.get('/api/qna', async (req, res) => {
     const qnas = await Qna.find();
@@ -324,7 +336,7 @@ app.post('/api/qna', checkLogin, async (req, res) => {
         content, 
         isSecret: isSecret || false,
         userId: req.session.userId, 
-        date: new Date().toLocaleString(), 
+        date: getKoreaTime(), // ✨ [수정] 한국 시간 적용
         answer: null 
     }).save();
     res.json({ success: true });
