@@ -110,7 +110,7 @@
         let foundUserIdTemp = ""; 
         let foundUserPwTemp = ""; 
         
-        // ✨ [추가] 중복확인 완료 여부 저장 변수
+        // 중복확인 완료 여부 저장 변수
         let isIdChecked = false; 
 
         // 사용자가 아이디를 수정하면 중복확인을 다시 하도록 초기화
@@ -118,25 +118,36 @@
             isIdChecked = false;
         }
 
-        // ✨ [추가] 중복확인 버튼 클릭 시 실행되는 함수
+        // ✨ [수정 완료] 에러 감지 레이더가 장착된 중복확인 함수
         async function checkDuplicateId() {
             const userId = document.getElementById('signup-id').value;
             if(!userId) return alert('아이디를 먼저 입력해주세요.');
 
-            const res = await fetch('/api/check-id', { 
-                method: 'POST', 
-                headers: { 'Content-Type': 'application/json' }, 
-                body: JSON.stringify({ userId }) 
-            });
-            const data = await res.json();
+            try {
+                const res = await fetch('/api/check-id', { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({ userId }) 
+                });
 
-            if(data.success) {
-                alert('사용 가능한 아이디입니다! ✅');
-                isIdChecked = true;
-            } else {
-                alert('이미 사용 중인 아이디입니다. ❌ 다른 아이디를 입력해주세요.');
-                isIdChecked = false;
-                document.getElementById('signup-id').value = ""; // 중복이면 칸 비우기
+                // 서버가 정상적으로 대답하지 않았을 때 (404, 500 에러 등)
+                if (!res.ok) {
+                    throw new Error(`서버가 아파요! (에러 코드: ${res.status})`);
+                }
+
+                const data = await res.json();
+
+                if(data.success) {
+                    alert('사용 가능한 아이디입니다! ✅');
+                    isIdChecked = true;
+                } else {
+                    alert('이미 사용 중인 아이디입니다. ❌ 다른 아이디를 입력해주세요.');
+                    isIdChecked = false;
+                    document.getElementById('signup-id').value = ""; // 중복이면 칸 비우기
+                }
+            } catch (error) {
+                // 서버 통신 에러 발생 시 알림
+                alert('🚨 서버 통신 에러 발생: ' + error.message + '\n\nRender 로그(CCTV)를 확인해보세요!');
             }
         }
 
@@ -197,7 +208,7 @@
             
             if(!userId || !userPw || !userName || !userPhone) return alert('모든 항목을 입력해주세요.');
             
-            // ✨ [추가] 중복확인을 안 했으면 가입 차단
+            // 중복확인을 안 했으면 가입 차단
             if(!isIdChecked) {
                 return alert('아이디 중복확인 버튼을 눌러주세요!');
             }
