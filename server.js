@@ -29,7 +29,7 @@ if (!fs.existsSync(uploadsPath)) fs.mkdirSync(uploadsPath);
 // ✨ 1-1. MongoDB 연결 및 스키마 설정
 // ==========================================
 // 🚨 아래 <password> 부분을 대표님의 진짜 비밀번호로 바꿔주세요!
-const MONGO_URI = "mongodb+srv://kkdlove999_dk_9:qlfeld2323!@cluster0.rx5jxnx.mongodb.net/?appName=Cluster0";
+const MONGO_URI = "mongodb+srv://kkdlove999_dk_9:<password>@cluster0.rx5jxnx.mongodb.net/?appName=Cluster0";
 
 mongoose.connect(MONGO_URI)
     .then(() => console.log("✅ MongoDB 연결 성공! (데이터 영구 보존 모드)"))
@@ -284,4 +284,54 @@ app.get('/api/admin/excel', async (req, res) => {
         { header: '연락처', key: 'phone', width: 18 },
         { header: '배송지 주소', key: 'address', width: 40 },
         { header: '상품금액', key: 'amount', width: 15 },
-        { header: '상태', key: 'status', width:
+        { header: '상태', key: 'status', width: 12 },
+        { header: '택배사', key: 'courier', width: 15 },
+        { header: '송장번호', key: 'trackingNumber', width: 20 }
+    ];
+    
+    const orders = await Order.find();
+    orders.forEach(o => {
+        sheet.addRow({ 
+            date: o.orderDate, 
+            name: o.name, 
+            phone: o.phone || '정보 없음', 
+            address: o.address || '정보 없음', 
+            amount: o.totalAmount, 
+            status: o.status,
+            courier: o.courier || '-',
+            trackingNumber: o.trackingNumber || '-'
+        });
+    });
+    
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename=orders_full_data.xlsx');
+    await workbook.xlsx.write(res);
+    res.end();
+});
+
+// ==========================================
+// 7. Q&A 게시판 및 라우팅
+// ==========================================
+app.get('/api/qna', async (req, res) => {
+    const qnas = await Qna.find();
+    res.json(qnas);
+});
+
+app.post('/api/qna', checkLogin, async (req, res) => {
+    const { title, content, isSecret } = req.body;
+    await new Qna({ 
+        title, 
+        content, 
+        isSecret: isSecret || false,
+        userId: req.session.userId, 
+        date: new Date().toLocaleString(), 
+        answer: null 
+    }).save();
+    res.json({ success: true });
+});
+
+app.get('/admin', (req, res) => res.sendFile(path.join(publicPath, 'admin.html')));
+app.get('/', (req, res) => res.sendFile(path.join(publicPath, 'login.html')));
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`🚀 [Admin Master] Live on http://localhost:${PORT} (MongoDB Connected)`));
