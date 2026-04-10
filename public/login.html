@@ -63,10 +63,14 @@
             
             <div class="form-group" style="display:flex; gap:10px;">
                 <input type="text" id="signup-id" placeholder="아이디 (대/소문자 및 공백 주의)" style="flex:1;" oninput="resetIdCheck()">
-                <button type="button" style="width:90px; border:1px solid #3b82f6; background:white; color:#3b82f6; border-radius:5px; cursor:pointer; font-weight:bold; font-size:0.9rem;" onclick="checkDuplicateId()">중복확인</button>
+                <button type="button" style="width:95px; border:1px solid #3b82f6; background:white; color:#3b82f6; border-radius:5px; cursor:pointer; font-weight:bold; font-size:0.9rem;" onclick="checkDuplicateId()">중복확인</button>
             </div>
             
-            <div class="form-group"><input type="password" id="signup-pw" placeholder="비밀번호(영문/숫자/기호 조합 8자리 이상)"></div>
+            <div class="form-group" style="display:flex; gap:10px;">
+                <input type="password" id="signup-pw" placeholder="비밀번호(영문/숫자/기호 8자리 이상)" style="flex:1;" oninput="resetPwCheck()">
+                <button type="button" style="width:95px; border:1px solid #3b82f6; background:white; color:#3b82f6; border-radius:5px; cursor:pointer; font-weight:bold; font-size:0.9rem;" onclick="checkPassword()">비번확인</button>
+            </div>
+            
             <div class="form-group"><input type="text" id="signup-name" placeholder="이름(대/소문자 및 공백 주의)"></div>
             <div class="form-group"><input type="text" id="signup-phone" placeholder="핸드폰번호(숫자만 입력)" oninput="autoHyphen(this)" maxlength="13"></div>
             
@@ -110,15 +114,13 @@
         let foundUserIdTemp = ""; 
         let foundUserPwTemp = ""; 
         
-        // 중복확인 완료 여부 저장 변수
         let isIdChecked = false; 
+        let isPwChecked = false; // ✨ [추가] 비밀번호 확인 완료 여부
 
-        // 사용자가 아이디를 수정하면 중복확인을 다시 하도록 초기화
-        function resetIdCheck() {
-            isIdChecked = false;
-        }
+        function resetIdCheck() { isIdChecked = false; }
+        function resetPwCheck() { isPwChecked = false; } // 비밀번호 수정 시 다시 검사받도록 초기화
 
-        // ✨ [수정 완료] 에러 감지 레이더가 장착된 중복확인 함수
+        // 아이디 중복확인 함수
         async function checkDuplicateId() {
             const userId = document.getElementById('signup-id').value;
             if(!userId) return alert('아이디를 먼저 입력해주세요.');
@@ -130,25 +132,46 @@
                     body: JSON.stringify({ userId }) 
                 });
 
-                // 서버가 정상적으로 대답하지 않았을 때 (404, 500 에러 등)
-                if (!res.ok) {
-                    throw new Error(`서버가 아파요! (에러 코드: ${res.status})`);
-                }
+                if (!res.ok) throw new Error(`서버 에러 (${res.status})`);
 
                 const data = await res.json();
-
                 if(data.success) {
                     alert('사용 가능한 아이디입니다! ✅');
                     isIdChecked = true;
                 } else {
                     alert('이미 사용 중인 아이디입니다. ❌ 다른 아이디를 입력해주세요.');
                     isIdChecked = false;
-                    document.getElementById('signup-id').value = ""; // 중복이면 칸 비우기
+                    document.getElementById('signup-id').value = ""; 
                 }
             } catch (error) {
-                // 서버 통신 에러 발생 시 알림
-                alert('🚨 서버 통신 에러 발생: ' + error.message + '\n\nRender 로그(CCTV)를 확인해보세요!');
+                alert('🚨 서버 통신 에러 발생: ' + error.message);
             }
+        }
+
+        // ✨ [추가] 깐깐한 비밀번호 유효성 검사 함수
+        function checkPassword() {
+            const pw = document.getElementById('signup-pw').value;
+            
+            // 1. 길이 검사 (8자리 미만)
+            if (pw.length < 8) {
+                return alert("최소 8자리 이상의 비밀번호를 작성해주세요.");
+            }
+            // 2. 영문 포함 여부 검사
+            if (!/[a-zA-Z]/.test(pw)) {
+                return alert("영문을 추가하여 8자리 비밀번호를 작성해주세요.");
+            }
+            // 3. 숫자 포함 여부 검사
+            if (!/[0-9]/.test(pw)) {
+                return alert("숫자를 추가하여 8자리 비밀번호를 작성해주세요.");
+            }
+            // 4. 기호(특수문자) 포함 여부 검사
+            if (!/[!@#$%^&*(),.?":{}|<>~_`\[\]\\\/\-+=]/.test(pw)) {
+                return alert("기호를 추가하여 8자리 비밀번호를 작성해주세요.");
+            }
+
+            // 모든 관문을 통과했다면!
+            alert("사용 가능한 안전한 비밀번호입니다! ✅");
+            isPwChecked = true;
         }
 
         function openModal(id) { 
@@ -156,7 +179,8 @@
             if(rb) { rb.innerHTML = ''; rb.style.opacity = '0'; }
             
             if(id === 'signup-modal') {
-                isIdChecked = false; // 창 열때 초기화
+                isIdChecked = false; 
+                isPwChecked = false; // 창 열때 비밀번호 확인 여부도 초기화
             }
 
             if(id === 'find-id-modal') {
@@ -208,9 +232,13 @@
             
             if(!userId || !userPw || !userName || !userPhone) return alert('모든 항목을 입력해주세요.');
             
-            // 중복확인을 안 했으면 가입 차단
             if(!isIdChecked) {
                 return alert('아이디 중복확인 버튼을 눌러주세요!');
+            }
+
+            // ✨ [추가] 비밀번호 조건을 통과하지 못하고 가입을 누른 경우 차단
+            if(!isPwChecked) {
+                return alert('가입에 실패하였습니다.\n(비밀번호 조건을 확인해주세요)');
             }
 
             const res = await fetch('/api/signup', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userId, userPw, userName, userPhone}) });
