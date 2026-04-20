@@ -5,6 +5,13 @@ const ExcelJS = require('exceljs');
 const multer = require('multer');
 const fs = require('fs');
 const mongoose = require('mongoose'); // ✨ MongoDB 연동 도구 추가
+
+// ✨ [소셜 로그인 추가] 핵심 부품 불러오기
+const passport = require('passport');
+const KakaoStrategy = require('passport-kakao').Strategy;
+const NaverStrategy = require('passport-naver').Strategy;
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
+
 const app = express();
 
 const publicPath = path.join(__dirname, 'public');
@@ -24,6 +31,25 @@ app.use(session({
 
 const upload = multer({ dest: uploadsPath });
 if (!fs.existsSync(uploadsPath)) fs.mkdirSync(uploadsPath);
+
+// ✨ [소셜 로그인 추가] Passport 초기화 및 세션 연결
+app.use(passport.initialize());
+app.use(passport.session());
+
+passport.serializeUser((user, done) => done(null, user));
+passport.deserializeUser((user, done) => done(null, user));
+
+// ✨ [소셜 로그인 추가] 설정 및 전략 세팅 (발급받은 키 입력 필요)
+const SOCIAL_CONFIG = {
+    kakao: { clientID: 'YOUR_KAKAO_ID', callbackURL: '/auth/kakao/callback' },
+    naver: { clientID: 'YOUR_NAVER_ID', clientSecret: 'YOUR_SECRET', callbackURL: '/auth/naver/callback' },
+    google: { clientID: 'YOUR_GOOGLE_ID', clientSecret: 'YOUR_SECRET', callbackURL: '/auth/google/callback' }
+};
+
+passport.use(new KakaoStrategy(SOCIAL_CONFIG.kakao, (accessToken, refreshToken, profile, done) => done(null, profile)));
+passport.use(new NaverStrategy(SOCIAL_CONFIG.naver, (accessToken, refreshToken, profile, done) => done(null, profile)));
+passport.use(new GoogleStrategy(SOCIAL_CONFIG.google, (accessToken, refreshToken, profile, done) => done(null, profile)));
+// ---------------------------------------------------
 
 // ==========================================
 // 💡 [추가] 한국 시간(KST)을 정확하게 가져오는 함수
@@ -162,6 +188,17 @@ app.post('/api/login', async (req, res) => {
         res.json({ success: false, message: "입력하신 정보는 올바르지 않습니다." });
     }
 });
+
+// ✨ [소셜 로그인 추가] 접속 주소 라우트 추가
+app.get('/auth/kakao', passport.authenticate('kakao'));
+app.get('/auth/kakao/callback', passport.authenticate('kakao', { successRedirect: '/display.html', failureRedirect: '/login.html' }));
+
+app.get('/auth/naver', passport.authenticate('naver'));
+app.get('/auth/naver/callback', passport.authenticate('naver', { successRedirect: '/display.html', failureRedirect: '/login.html' }));
+
+app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+app.get('/auth/google/callback', passport.authenticate('google', { successRedirect: '/display.html', failureRedirect: '/login.html' }));
+// ---------------------------------------------------
 
 // [복구 완료] 실패 시 응답 문구 완벽 고정
 app.post('/api/find-id', async (req, res) => {
