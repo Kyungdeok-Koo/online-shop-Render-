@@ -190,9 +190,7 @@ app.post('/api/login', async (req, res) => {
 });
 
 // ✨ [소셜 로그인 추가] 접속 주소 라우트 추가
-app.get('/auth/kakao', passport.authenticate('kakao', {
-    prompt: 'login' // ✨ 유저가 항상 새로운 로그인창을 보게 하여 혼란을 줄입니다.
-}));
+app.get('/auth/kakao', passport.authenticate('kakao'));
 app.get('/auth/kakao/callback', passport.authenticate('kakao', { successRedirect: '/display.html', failureRedirect: '/login.html' }));
 
 app.get('/auth/naver', passport.authenticate('naver'));
