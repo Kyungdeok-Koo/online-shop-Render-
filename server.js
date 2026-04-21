@@ -41,7 +41,7 @@ passport.deserializeUser((user, done) => done(null, user));
 
 // ✨ [소셜 로그인 추가] 설정 및 전략 세팅 (발급받은 키 입력 필요)
 const SOCIAL_CONFIG = {
-    kakao: { clientID: 'a6a044e8ea29cdd6c5eeaf7304d72c2c', callbackURL: 'https://ssafymall.onrender.com/auth/kakao/callback' },
+    kakao: { clientID: 'a6a044e8ea29cdd6c5eeaf7304d72c2c', clientSecret: 'TFKjh8l3UrvgCH3Y736gvwtYKvT5ktpS', callbackURL: 'https://ssafymall.onrender.com/auth/kakao/callback' },
     naver: { clientID: 'vC7yingwbejXW3NM7cbi', clientSecret: 'Fpv2ns2yK3', callbackURL: 'https://ssafymall.onrender.com/auth/naver/callback' },
     google: { clientID: '927219819087-lgrv1jqklod7tr921ukb1h1r44rrta91.apps.googleusercontent.com', clientSecret: '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', callbackURL: 'https://ssafymall.onrender.com/auth/google/callback' }
 };
