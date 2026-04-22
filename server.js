@@ -83,7 +83,7 @@ passport.deserializeUser((obj, done) => {
 app.get('/auth/kakao', passport.authenticate('kakao'));
 app.get('/auth/kakao/callback', 
     passport.authenticate('kakao', { failureRedirect: '/login.html' }), // 실패하면 다시 로그인 창으로
-    (req, res) => req.session.save(() => res.redirect('/display.html')) // 👈 성공하면 display.html로!
+    (req, res) => req.session.save(() => res.redirect('<h1 style="font-size:50px; text-align:center; margin-top:100px;">🎉 카카오 로그인 완벽 성공!! 🎉</h1>')) 
 );
 
 // 네이버 로그인
