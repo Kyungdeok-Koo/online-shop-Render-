@@ -8,7 +8,6 @@ const fs = require('fs');
 const mongoose = require('mongoose'); // ✨ MongoDB 연동 도구 추가
 
 // ✨ [소셜 로그인 추가] 핵심 부품 불러오기
-const passport = require('passport');
 const KakaoStrategy = require('passport-kakao').Strategy;
 const NaverStrategy = require('passport-naver').Strategy;
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
