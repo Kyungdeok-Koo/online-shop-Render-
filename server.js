@@ -34,7 +34,7 @@ app.use(session({
     cookie: { 
         maxAge: 3600000, 
         httpOnly: true,
-        secure: true, // trust proxy 설정 덕분에 https에서 안전하게 작동합니다
+        secure: false, // trust proxy 설정 덕분에 https에서 안전하게 작동합니다
         sameSite: 'none' // 크로스 도메인 이슈 방지
     }
 }));
@@ -61,9 +61,11 @@ const SOCIAL_CONFIG = {
 passport.use(new KakaoStrategy(SOCIAL_CONFIG.kakao, (accessToken, refreshToken, profile, done) => {
     return done(null, profile); // 유저 정보를 성공적으로 가져오면 세션으로 넘김
 }));
+
 passport.use(new NaverStrategy(SOCIAL_CONFIG.naver, (accessToken, refreshToken, profile, done) => {
     return done(null, profile);
 }));
+
 passport.use(new GoogleStrategy(SOCIAL_CONFIG.google, (accessToken, refreshToken, profile, done) => {
     return done(null, profile);
 }));
