@@ -82,27 +82,22 @@ passport.deserializeUser((obj, done) => {
 // 카카오 로그인
 app.get('/auth/kakao', passport.authenticate('kakao'));
 app.get('/auth/kakao/callback', 
-    passport.authenticate('kakao', { failureRedirect: '/login' }), 
-    (req, res) => {
-        // 로그인 성공 시 세션이 잘 구워졌는지 확인하고 메인으로!
-        req.session.save(() => { 
-            res.redirect('/'); 
-        });
-    }
+    passport.authenticate('kakao', { failureRedirect: '/login.html' }), // 실패하면 다시 로그인 창으로
+    (req, res) => req.session.save(() => res.redirect('/display.html')) // 👈 성공하면 display.html로!
 );
 
 // 네이버 로그인
 app.get('/auth/naver', passport.authenticate('naver'));
 app.get('/auth/naver/callback', 
-    passport.authenticate('naver', { failureRedirect: '/login' }), 
-    (req, res) => res.redirect('/')
+    passport.authenticate('naver', { failureRedirect: '/login.html' }), 
+    (req, res) => req.session.save(() => res.redirect('/display.html')) // 👈 성공하면 display.html로!
 );
 
 // 구글 로그인
 app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 app.get('/auth/google/callback', 
-    passport.authenticate('google', { failureRedirect: '/login' }), 
-    (req, res) => res.redirect('/')
+    passport.authenticate('google', { failureRedirect: '/login.html' }), 
+    (req, res) => req.session.save(() => res.redirect('/display.html')) // 👈 성공하면 display.html로!
 );
 
 // ==========================================
