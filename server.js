@@ -46,10 +46,47 @@ const SOCIAL_CONFIG = {
     google: { clientID: '927219819087-lgrv1jqklod7tr921ukb1h1r44rrta91.apps.googleusercontent.com', clientSecret: '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', callbackURL: 'https://ssafymall.onrender.com/auth/google/callback' }
 };
 
-passport.use(new KakaoStrategy(SOCIAL_CONFIG.kakao, (accessToken, refreshToken, profile, done) => done(null, profile)));
-passport.use(new NaverStrategy(SOCIAL_CONFIG.naver, (accessToken, refreshToken, profile, done) => done(null, profile)));
-passport.use(new GoogleStrategy(SOCIAL_CONFIG.google, (accessToken, refreshToken, profile, done) => done(null, profile)));
-// ---------------------------------------------------
+// 2. 패스포트 엔진 설정 (유저 정보를 가져오는 방식 정의)
+passport.use(new KakaoStrategy(SOCIAL_CONFIG.kakao, (accessToken, refreshToken, profile, done) => {
+    return done(null, profile); // 유저 정보를 성공적으로 가져오면 세션으로 넘김
+}));
+passport.use(new NaverStrategy(SOCIAL_CONFIG.naver, (accessToken, refreshToken, profile, done) => {
+    return done(null, profile);
+}));
+passport.use(new GoogleStrategy(SOCIAL_CONFIG.google, (accessToken, refreshToken, profile, done) => {
+    return done(null, profile);
+}));
+
+// ⭐ [중요] 3. 유저 정보 기억 장치 (이게 없어서 아까 튕겼던 겁니다!)
+passport.serializeUser((user, done) => {
+    done(null, user); // 로그인 성공 시 유저 정보를 세션에 저장
+});
+
+passport.deserializeUser((obj, done) => {
+    done(null, obj); // 페이지 이동 시 저장된 유저 정보를 다시 불러옴
+});
+
+// 4. 소셜 로그인 전용 라우터 (클릭 시 이동하는 경로)
+// 카카오 로그인
+app.get('/auth/kakao', passport.authenticate('kakao'));
+app.get('/auth/kakao/callback', 
+    passport.authenticate('kakao', { failureRedirect: '/login' }), 
+    (req, res) => res.redirect('/') // 로그인 성공 시 메인 페이지로!
+);
+
+// 네이버 로그인
+app.get('/auth/naver', passport.authenticate('naver'));
+app.get('/auth/naver/callback', 
+    passport.authenticate('naver', { failureRedirect: '/login' }), 
+    (req, res) => res.redirect('/')
+);
+
+// 구글 로그인
+app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+app.get('/auth/google/callback', 
+    passport.authenticate('google', { failureRedirect: '/login' }), 
+    (req, res) => res.redirect('/')
+);
 
 // ==========================================
 // 💡 [추가] 한국 시간(KST)을 정확하게 가져오는 함수
