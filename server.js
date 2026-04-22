@@ -1,5 +1,6 @@
 const express = require('express');
 const session = require('express-session');
+const passport = require('passport');
 const path = require('path');
 const ExcelJS = require('exceljs');
 const multer = require('multer');
@@ -22,11 +23,21 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(publicPath)); 
 app.use('/uploads', express.static(uploadsPath));
 
+// 1. [필수] Render 프록시 신뢰 설정 (이게 있어야 세션 쿠키가 생성됩니다)
+app.set('trust proxy', 1);
+
+// 2. 세션 설정 (대표님의 기존 설정에 프록시 대응 코드 추가)
 app.use(session({
-    secret: 'ssafy-pro-ultimate-2026',
+    secret: 'ssafy-pro-ultimate-2026', // 대표님의 기존 비밀키 유지
     resave: false,
     saveUninitialized: false,
-    cookie: { maxAge: 3600000, httpOnly: true }
+    proxy: true, // 프록시 환경임을 명시
+    cookie: { 
+        maxAge: 3600000, 
+        httpOnly: true,
+        secure: true, // trust proxy 설정 덕분에 https에서 안전하게 작동합니다
+        sameSite: 'none' // 크로스 도메인 이슈 방지
+    }
 }));
 
 const upload = multer({ dest: uploadsPath });
@@ -36,8 +47,9 @@ if (!fs.existsSync(uploadsPath)) fs.mkdirSync(uploadsPath);
 app.use(passport.initialize());
 app.use(passport.session());
 
+// 4. 유저 정보 기억 장치 (직렬화)
 passport.serializeUser((user, done) => done(null, user));
-passport.deserializeUser((user, done) => done(null, user));
+passport.deserializeUser((obj, done) => done(null, obj));
 
 // ✨ [소셜 로그인 추가] 설정 및 전략 세팅 (발급받은 키 입력 필요)
 const SOCIAL_CONFIG = {
@@ -71,7 +83,12 @@ passport.deserializeUser((obj, done) => {
 app.get('/auth/kakao', passport.authenticate('kakao'));
 app.get('/auth/kakao/callback', 
     passport.authenticate('kakao', { failureRedirect: '/login' }), 
-    (req, res) => res.redirect('/') // 로그인 성공 시 메인 페이지로!
+    (req, res) => {
+        // 로그인 성공 시 세션이 잘 구워졌는지 확인하고 메인으로!
+        req.session.save(() => { 
+            res.redirect('/'); 
+        });
+    }
 );
 
 // 네이버 로그인
