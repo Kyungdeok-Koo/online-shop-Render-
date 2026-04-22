@@ -5,9 +5,9 @@ const path = require('path');
 const ExcelJS = require('exceljs');
 const multer = require('multer');
 const fs = require('fs');
-const mongoose = require('mongoose'); // ✨ MongoDB 연동 도구 추가
+const mongoose = require('mongoose');
 
-// ✨ [소셜 로그인 추가] 핵심 부품 불러오기
+// ✨ [소셜 로그인] 핵심 부품 불러오기
 const KakaoStrategy = require('passport-kakao').Strategy;
 const NaverStrategy = require('passport-naver').Strategy;
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
@@ -22,121 +22,94 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(publicPath)); 
 app.use('/uploads', express.static(uploadsPath));
 
-// 1. [필수] Render 프록시 신뢰 설정 (이게 있어야 세션 쿠키가 생성됩니다)
+// ==========================================
+// 🛡️ 보안 및 세션 설정
+// ==========================================
 app.set('trust proxy', 1);
 
-// 2. 세션 설정 (대표님의 기존 설정에 프록시 대응 코드 추가)
 app.use(session({
-    secret: 'ssafy-pro-ultimate-2026', // 대표님의 기존 비밀키 유지
+    secret: 'ssafy-pro-ultimate-2026',
     resave: false,
     saveUninitialized: false,
-    proxy: true, // 프록시 환경임을 명시
+    proxy: true,
     cookie: { 
         maxAge: 3600000, 
         httpOnly: true,
-        secure: false, // trust proxy 설정 덕분에 https에서 안전하게 작동합니다
+        secure: false // Render 환경 필수
     }
 }));
 
 const upload = multer({ dest: uploadsPath });
 if (!fs.existsSync(uploadsPath)) fs.mkdirSync(uploadsPath);
 
-// ✨ [소셜 로그인 추가] Passport 초기화 및 세션 연결
 app.use(passport.initialize());
 app.use(passport.session());
 
-// 4. 유저 정보 기억 장치 (직렬화)
 passport.serializeUser((user, done) => done(null, user));
 passport.deserializeUser((obj, done) => done(null, obj));
 
-// ✨ [소셜 로그인 추가] 설정 및 전략 세팅 (발급받은 키 입력 필요)
-const SOCIAL_CONFIG = {
-    kakao: { clientID: 'a6a044e8ea29cdd6c5eeaf7304d72c2c', clientSecret: 'TFKjh8l3UrvgCH3Y736gvwtYKvT5ktpS', callbackURL: 'https://ssafymall.onrender.com/auth/kakao/callback' },
-    naver: { clientID: 'vC7yingwbejXW3NM7cbi', clientSecret: 'Fpv2ns2yK3', callbackURL: 'https://ssafymall.onrender.com/auth/naver/callback' },
-    google: { clientID: '927219819087-lgrv1jqklod7tr921ukb1h1r44rrta91.apps.googleusercontent.com', clientSecret: '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', callbackURL: 'https://ssafymall.onrender.com/auth/google/callback' }
-};
-
-// 2. 패스포트 엔진 설정 (유저 정보를 가져오는 방식 정의)
-passport.use(new KakaoStrategy(SOCIAL_CONFIG.kakao, (accessToken, refreshToken, profile, done) => {
-    return done(null, profile); // 유저 정보를 성공적으로 가져오면 세션으로 넘김
-}));
-
-passport.use(new NaverStrategy(SOCIAL_CONFIG.naver, (accessToken, refreshToken, profile, done) => {
-    return done(null, profile);
-}));
-
-passport.use(new GoogleStrategy(SOCIAL_CONFIG.google, (accessToken, refreshToken, profile, done) => {
-    return done(null, profile);
-}));
-
-// ⭐ [중요] 3. 유저 정보 기억 장치 (이게 없어서 아까 튕겼던 겁니다!)
-passport.serializeUser((user, done) => {
-    done(null, user); // 로그인 성공 시 유저 정보를 세션에 저장
-});
-
-passport.deserializeUser((obj, done) => {
-    done(null, obj); // 페이지 이동 시 저장된 유저 정보를 다시 불러옴
-});
-
-// 4. 소셜 로그인 전용 라우터 (클릭 시 이동하는 경로)
-// 카카오 로그인
-app.get('/auth/kakao', passport.authenticate('kakao'));
-app.get('/auth/kakao/callback', 
-    passport.authenticate('kakao', { failureRedirect: '/login.html' }), // 실패하면 다시 로그인 창으로
-    (req, res) => req.session.save(() => res.redirect('/display.html')) // 👈 성공하면 display.html로!
-);
-
-// 네이버 로그인
-app.get('/auth/naver', passport.authenticate('naver'));
-app.get('/auth/naver/callback', 
-    passport.authenticate('naver', { failureRedirect: '/login.html' }), 
-    (req, res) => req.session.save(() => res.redirect('/display.html')) // 👈 성공하면 display.html로!
-);
-
-// 구글 로그인
-app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
-app.get('/auth/google/callback', 
-    passport.authenticate('google', { failureRedirect: '/login.html' }), 
-    (req, res) => req.session.save(() => res.redirect('/display.html')) // 👈 성공하면 display.html로!
-);
-
-// ==========================================
-// 💡 [추가] 한국 시간(KST)을 정확하게 가져오는 함수
-// ==========================================
+// 💡 한국 시간(KST)을 정확하게 가져오는 함수
 const getKoreaTime = () => {
     return new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
 };
 
 // ==========================================
-// ✨ 1-1. MongoDB 연결 및 스키마 설정
+// 📦 MongoDB 연결 및 스키마 설정
 // ==========================================
-// 🚨 아래 <password> 부분을 대표님의 진짜 비밀번호로 바꿔주세요!
 const MONGO_URI = "mongodb+srv://kkdlove999_dk_9:qlfeld2323%21@cluster0.rx5jxnx.mongodb.net/?appName=Cluster0";
 
 mongoose.connect(MONGO_URI)
     .then(() => console.log("✅ MongoDB 연결 성공! (데이터 영구 보존 모드)"))
     .catch(err => console.error("❌ MongoDB 연결 실패:", err));
 
-// MongoDB 창고 모델 정의
-const User = mongoose.model('User', new mongoose.Schema({
-    id: String, pw: String, name: String, phone: String, joinDate: String
-}));
-
-const Order = mongoose.model('Order', new mongoose.Schema({
-    id: Number, userId: String, orderDate: String, items: Array, totalAmount: String,
-    name: String, address: String, phone: String, status: String, courier: String, trackingNumber: String
-}));
-
-const Review = mongoose.model('Review', new mongoose.Schema({
-    productId: String, content: String, userId: String, date: String
-}));
-
-const Qna = mongoose.model('Qna', new mongoose.Schema({
-    title: String, content: String, isSecret: Boolean, userId: String, date: String, answer: String
-}));
+const User = mongoose.model('User', new mongoose.Schema({ id: String, pw: String, name: String, phone: String, joinDate: String }));
+const Order = mongoose.model('Order', new mongoose.Schema({ id: Number, userId: String, orderDate: String, items: Array, totalAmount: String, name: String, address: String, phone: String, status: String, courier: String, trackingNumber: String }));
+const Review = mongoose.model('Review', new mongoose.Schema({ productId: String, content: String, userId: String, date: String }));
+const Qna = mongoose.model('Qna', new mongoose.Schema({ title: String, content: String, isSecret: Boolean, userId: String, date: String, answer: String }));
 
 // ==========================================
-// 1. 데이터베이스 세팅 (가격 120, 90, 150 반영)
+// 🔑 소셜 로그인 설정 및 자동 동기화 라우터
+// ==========================================
+const SOCIAL_CONFIG = {
+    kakao: { clientID: 'a6a044e8ea29cdd6c5eeaf7304d72c2c', clientSecret: 'TFKjh8l3UrvgCH3Y736gvwtYKvT5ktpS', callbackURL: 'https://ssafymall.onrender.com/auth/kakao/callback' },
+    naver: { clientID: 'vC7yingwbejXW3NM7cbi', clientSecret: 'Fpv2ns2yK3', callbackURL: 'https://ssafymall.onrender.com/auth/naver/callback' },
+    google: { clientID: '927219819087-lgrv1jqklod7tr921ukb1h1r44rrta91.apps.googleusercontent.com', clientSecret: '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', callbackURL: 'https://ssafymall.onrender.com/auth/google/callback' }
+};
+
+passport.use(new KakaoStrategy(SOCIAL_CONFIG.kakao, (accessToken, refreshToken, profile, done) => done(null, profile)));
+passport.use(new NaverStrategy(SOCIAL_CONFIG.naver, (accessToken, refreshToken, profile, done) => done(null, profile)));
+passport.use(new GoogleStrategy(SOCIAL_CONFIG.google, (accessToken, refreshToken, profile, done) => done(null, profile)));
+
+/* 🚨 여기가 튕김 현상을 영구적으로 없애는 마법의 로직입니다! (소셜 유저를 일반 DB에 자동 가입) */
+app.get('/auth/kakao', passport.authenticate('kakao'));
+app.get('/auth/kakao/callback', passport.authenticate('kakao', { failureRedirect: '/login.html' }), async (req, res) => {
+    const socialId = 'kakao_' + req.user.id;
+    const socialName = req.user.displayName || req.user.username || '카카오 회원';
+    if (!(await User.findOne({ id: socialId }))) await new User({ id: socialId, pw: 'social_user', name: socialName, phone: '소셜계정', joinDate: getKoreaTime() }).save();
+    req.session.userId = socialId; // 일반 회원과 똑같은 명찰 달아주기
+    req.session.save(() => res.redirect('/display.html'));
+});
+
+app.get('/auth/naver', passport.authenticate('naver'));
+app.get('/auth/naver/callback', passport.authenticate('naver', { failureRedirect: '/login.html' }), async (req, res) => {
+    const socialId = 'naver_' + req.user.id;
+    const socialName = req.user.displayName || req.user.name || '네이버 회원';
+    if (!(await User.findOne({ id: socialId }))) await new User({ id: socialId, pw: 'social_user', name: socialName, phone: '소셜계정', joinDate: getKoreaTime() }).save();
+    req.session.userId = socialId;
+    req.session.save(() => res.redirect('/display.html'));
+});
+
+app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+app.get('/auth/google/callback', passport.authenticate('google', { failureRedirect: '/login.html' }), async (req, res) => {
+    const socialId = 'google_' + req.user.id;
+    const socialName = req.user.displayName || '구글 회원';
+    if (!(await User.findOne({ id: socialId }))) await new User({ id: socialId, pw: 'social_user', name: socialName, phone: '소셜계정', joinDate: getKoreaTime() }).save();
+    req.session.userId = socialId;
+    req.session.save(() => res.redirect('/display.html'));
+});
+
+// ==========================================
+// 🛒 상품 초기 데이터 및 로그인 문지기
 // ==========================================
 let db_products = [
     { id: 1, name: "고급 기계식 키보드", price: 120, category: "전자제품", img: "/uploads/keyboard.jpg", desc: "최고의 타건감, 개발자 필수 아이템.", stock: 50 },
@@ -146,20 +119,18 @@ let db_products = [
 
 let db_coupons = [{ code: "PRO2026", discount: 15000 }];
 
+// 🚨 이제 문지기는 일반 유저, 소셜 유저 구별 없이 완벽하게 통과시킵니다.
 const checkLogin = (req, res, next) => req.session.userId ? next() : res.status(401).json({ message: "로그인이 필요합니다." });
 
 // ==========================================
-// 2. 상품 및 리뷰 API 
+// 🌐 기존 API 라우터 (대표님 코드 100% 원본 유지)
 // ==========================================
 app.get('/api/products', (req, res) => res.json(db_products));
 
 app.get('/api/products/:id', (req, res) => {
     const p = db_products.find(item => item.id == req.params.id);
-    if (p) {
-        res.json(p);
-    } else {
-        res.status(404).json({ message: "상품 없음" });
-    }
+    if (p) res.json(p);
+    else res.status(404).json({ message: "상품 없음" });
 });
 
 app.get('/api/reviews/:productId', async (req, res) => {
@@ -167,62 +138,35 @@ app.get('/api/reviews/:productId', async (req, res) => {
     res.json({ reviews });
 });
 
-// [복구 완료] 구매확정 시에만 후기 작성 허용 로직 + 한국 시간 적용
 app.post('/api/reviews', checkLogin, async (req, res) => {
     const { productId, content } = req.body;
-    
     const userOrders = await Order.find({ userId: req.session.userId, status: "구매확정" });
-    const hasPurchased = userOrders.some(o => 
-        o.items.some(item => String(item.id) === String(productId))
-    );
+    const hasPurchased = userOrders.some(o => o.items.some(item => String(item.id) === String(productId)));
 
-    if (!hasPurchased) {
-        return res.json({ success: false, message: "구매확정 단계에서만 작성할 수 있습니다." });
-    }
+    if (!hasPurchased) return res.json({ success: false, message: "구매확정 단계에서만 작성할 수 있습니다." });
 
-    await new Review({ 
-        productId, 
-        content, 
-        userId: req.session.userId, 
-        date: getKoreaTime() // ✨ 한국 시간 적용
-    }).save();
-    
+    await new Review({ productId, content, userId: req.session.userId, date: getKoreaTime() }).save();
     res.json({ success: true });
 });
 
-// ==========================================
-// 💡 [추가] 아이디 중복확인 전용 API
-// ==========================================
 app.post('/api/check-id', async (req, res) => {
     const user = await User.findOne({ id: req.body.userId });
-    if(user) res.json({ success: false }); // 중복됨
-    else res.json({ success: true });      // 사용 가능
+    if(user) res.json({ success: false }); 
+    else res.json({ success: true });      
 });
 
-// ==========================================
-// 3. 회원 및 인증 API (아이디/비번 찾기 포함)
-// ==========================================
 app.post('/api/signup', async (req, res) => {
     const { userId, userPw, userName, userPhone } = req.body;
     const phoneRegex = /^010-\d{4}-\d{4}$/;
     
-    if (!phoneRegex.test(userPhone)) {
-        return res.json({ success: false, message: "핸드폰 번호 형식이 올바르지 않습니다." });
-    }
+    if (!phoneRegex.test(userPhone)) return res.json({ success: false, message: "핸드폰 번호 형식이 올바르지 않습니다." });
     
-    // ✨ [수정] 아이디 또는 연락처가 이미 존재하는지 동시 검사
     const existingUser = await User.findOne({ $or: [{ id: userId }, { phone: userPhone }] });
-    
     if(existingUser) {
-        if(existingUser.id === userId) {
-            return res.json({ success: false, message: "이미 사용 중인 아이디입니다." });
-        }
-        if(existingUser.phone === userPhone) {
-            return res.json({ success: false, message: "이미 가입된 연락처입니다." });
-        }
+        if(existingUser.id === userId) return res.json({ success: false, message: "이미 사용 중인 아이디입니다." });
+        if(existingUser.phone === userPhone) return res.json({ success: false, message: "이미 가입된 연락처입니다." });
     }
     
-    // ✨ [수정] 한국 시간 적용
     await new User({ id: userId, pw: userPw, name: userName, phone: userPhone, joinDate: getKoreaTime() }).save();
     res.json({ success: true });
 });
@@ -238,36 +182,18 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// ✨ [소셜 로그인 추가] 접속 주소 라우트 추가
-app.get('/auth/kakao', passport.authenticate('kakao'));
-app.get('/auth/kakao/callback', passport.authenticate('kakao', { successRedirect: '/display.html', failureRedirect: '/login.html' }));
-
-app.get('/auth/naver', passport.authenticate('naver'));
-app.get('/auth/naver/callback', passport.authenticate('naver', { successRedirect: '/display.html', failureRedirect: '/login.html' }));
-
-app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
-app.get('/auth/google/callback', passport.authenticate('google', { successRedirect: '/display.html', failureRedirect: '/login.html' }));
-// ---------------------------------------------------
-
-// [복구 완료] 실패 시 응답 문구 완벽 고정
 app.post('/api/find-id', async (req, res) => {
     const { name, phone } = req.body;
     const user = await User.findOne({ name: name, phone: phone });
-    if(user) {
-        res.json({ success: true, userId: user.id });
-    } else {
-        res.json({ success: false, message: "입력하신 정보는 올바르지 않습니다." });
-    }
+    if(user) res.json({ success: true, userId: user.id });
+    else res.json({ success: false, message: "입력하신 정보는 올바르지 않습니다." });
 });
 
 app.post('/api/find-pw', async (req, res) => {
     const { userId, name, phone } = req.body;
     const user = await User.findOne({ id: userId, name: name, phone: phone });
-    if(user) {
-        res.json({ success: true, userPw: user.pw });
-    } else {
-        res.json({ success: false, message: "입력하신 정보는 올바르지 않습니다." });
-    }
+    if(user) res.json({ success: true, userPw: user.pw });
+    else res.json({ success: false, message: "입력하신 정보는 올바르지 않습니다." });
 });
 
 app.get('/api/logout', (req, res) => { 
@@ -275,9 +201,6 @@ app.get('/api/logout', (req, res) => {
     res.redirect('/'); 
 });
 
-// ==========================================
-// 4. 마이페이지 API (등급 및 누적 금액 실시간 계산)
-// ==========================================
 app.get('/api/user/me', checkLogin, async (req, res) => {
     const user = await User.findOne({ id: req.session.userId });
     if (!user) return res.status(404).json({ message: "사용자 없음" });
@@ -295,33 +218,17 @@ app.get('/api/user/me', checkLogin, async (req, res) => {
     res.json({ ...user.toObject(), totalSpent, grade });
 });
 
-// ==========================================
-// 5. 주문, 쿠폰, 배송 관리 API
-// ==========================================
 app.post('/api/check-coupon', (req, res) => {
     const { code } = req.body;
     const coupon = db_coupons.find(c => c.code === code);
-    if (coupon) {
-        res.json({ success: true, discount: coupon.discount });
-    } else {
-        res.json({ success: false, message: "유효하지 않거나 만료된 쿠폰입니다." });
-    }
+    if (coupon) res.json({ success: true, discount: coupon.discount });
+    else res.json({ success: false, message: "유효하지 않거나 만료된 쿠폰입니다." });
 });
 
 app.post('/api/order', checkLogin, async (req, res) => {
     const { items, totalAmount, name, address, phone } = req.body;
     await new Order({ 
-        id: Date.now(), 
-        userId: req.session.userId, 
-        orderDate: getKoreaTime(), // ✨ [수정] 한국 시간 적용
-        items, 
-        totalAmount, 
-        name, 
-        address, 
-        phone, 
-        status: "결제완료",
-        courier: null,
-        trackingNumber: null
+        id: Date.now(), userId: req.session.userId, orderDate: getKoreaTime(), items, totalAmount, name, address, phone, status: "결제완료", courier: null, trackingNumber: null
     }).save();
     res.json({ success: true });
 });
@@ -342,27 +249,21 @@ app.post('/api/user/order-confirm', checkLogin, async (req, res) => {
     }
 });
 
-// ==========================================
-// 6. 관리자(Admin) 전용 API
-// ==========================================
 app.get('/api/admin/orders', checkLogin, async (req, res) => {
     const orders = await Order.find();
     res.json(orders);
 });
 
-// [복구 완료] 배송중 변경 시 30초 후 배송완료 자동 처리
 app.post('/api/admin/order-status', checkLogin, async (req, res) => {
     const { orderId, status, courier, trackingNumber } = req.body;
     const order = await Order.findOne({ id: orderId });
     
     if (order) {
         order.status = status;
-        
         if (status === "배송중") {
             order.courier = courier; 
             order.trackingNumber = trackingNumber;
             await order.save();
-            
             setTimeout(async () => {
                 const targetOrder = await Order.findOne({ id: orderId });
                 if (targetOrder && targetOrder.status === "배송중") {
@@ -380,33 +281,22 @@ app.post('/api/admin/order-status', checkLogin, async (req, res) => {
     }
 });
 
-// [복구 완료] 엑셀 다운로드 (배송지 주소, 택배사, 송장번호까지 완벽하게 포함)
 app.get('/api/admin/excel', async (req, res) => {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Orders');
     
     sheet.columns = [
-        { header: '주문일시', key: 'date', width: 22 },
-        { header: '주문자', key: 'name', width: 15 },
-        { header: '연락처', key: 'phone', width: 18 },
-        { header: '배송지 주소', key: 'address', width: 40 },
-        { header: '상품금액', key: 'amount', width: 15 },
-        { header: '상태', key: 'status', width: 12 },
-        { header: '택배사', key: 'courier', width: 15 },
-        { header: '송장번호', key: 'trackingNumber', width: 20 }
+        { header: '주문일시', key: 'date', width: 22 }, { header: '주문자', key: 'name', width: 15 },
+        { header: '연락처', key: 'phone', width: 18 }, { header: '배송지 주소', key: 'address', width: 40 },
+        { header: '상품금액', key: 'amount', width: 15 }, { header: '상태', key: 'status', width: 12 },
+        { header: '택배사', key: 'courier', width: 15 }, { header: '송장번호', key: 'trackingNumber', width: 20 }
     ];
     
     const orders = await Order.find();
     orders.forEach(o => {
         sheet.addRow({ 
-            date: o.orderDate, 
-            name: o.name, 
-            phone: o.phone || '정보 없음', 
-            address: o.address || '정보 없음', 
-            amount: o.totalAmount, 
-            status: o.status,
-            courier: o.courier || '-',
-            trackingNumber: o.trackingNumber || '-'
+            date: o.orderDate, name: o.name, phone: o.phone || '정보 없음', address: o.address || '정보 없음', 
+            amount: o.totalAmount, status: o.status, courier: o.courier || '-', trackingNumber: o.trackingNumber || '-'
         });
     });
     
@@ -416,9 +306,6 @@ app.get('/api/admin/excel', async (req, res) => {
     res.end();
 });
 
-// ==========================================
-// 7. Q&A 게시판 및 라우팅 + 한국 시간 적용
-// ==========================================
 app.get('/api/qna', async (req, res) => {
     const qnas = await Qna.find();
     res.json(qnas);
@@ -427,12 +314,7 @@ app.get('/api/qna', async (req, res) => {
 app.post('/api/qna', checkLogin, async (req, res) => {
     const { title, content, isSecret } = req.body;
     await new Qna({ 
-        title, 
-        content, 
-        isSecret: isSecret || false,
-        userId: req.session.userId, 
-        date: getKoreaTime(), // ✨ [수정] 한국 시간 적용
-        answer: null 
+        title, content, isSecret: isSecret || false, userId: req.session.userId, date: getKoreaTime(), answer: null 
     }).save();
     res.json({ success: true });
 });
