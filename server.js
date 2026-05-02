@@ -71,10 +71,10 @@ const Qna = mongoose.model('Qna', new mongoose.Schema({ title: String, content: 
 // 🔑 소셜 로그인 설정 및 자동 동기화 라우터
 // ==========================================
 const SOCIAL_CONFIG = {
-    kakao: { clientID: 'a6a044e8ea29cdd6c5eeaf7304d72c2c', clientSecret: 'TFKjh8l3UrvgCH3Y736gvwtYKvT5ktpS', callbackURL: 'https://ssafymall.onrender.com/auth/kakao/callback' },
-    naver: { clientID: 'vC7yingwbejXW3NM7cbi', clientSecret: 'Fpv2ns2yK3', callbackURL: 'https://ssafymall.onrender.com/auth/naver/callback' },
-    google: { clientID: '927219819087-lgrv1jqklod7tr921ukb1h1r44rrta91.apps.googleusercontent.com', clientSecret: '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', callbackURL: 'https://ssafymall.onrender.com/auth/google/callback' }
-};
+    kakao: { clientID: 'a6a044e8ea29cdd6c5eeaf7304d72c2c', clientSecret: '44A7rUNjIG2BVekjXRVuMn3T4TCqiU0F', callbackURL: 'https://ssafymall.onrender.com/auth/kakao/callback' },
+    naver: { clientID: 'vC7yingwbejXW3NM7cbi', clientSecret: 'H7v8QHA6C7', callbackURL: 'https://ssafymall.onrender.com/auth/naver/callback' },
+    google: { clientID: '927219819087-lgrv1jqklod7tr921ukb1h1r44rrta91.apps.googleusercontent.com', clientSecret: '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', callbackURL: 'https://ssafymall.onrender.com/auth/google/callback' }
+}; 
 
 passport.use(new KakaoStrategy(SOCIAL_CONFIG.kakao, (accessToken, refreshToken, profile, done) => done(null, profile)));
 passport.use(new NaverStrategy(SOCIAL_CONFIG.naver, (accessToken, refreshToken, profile, done) => done(null, profile)));
