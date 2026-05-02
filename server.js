@@ -1,3 +1,5 @@
+require('dotenv').config(); // ✨ [보안] 가장 먼저 .env 파일의 비밀번호들을 불러옵니다.
+
 const express = require('express');
 const session = require('express-session');
 const passport = require('passport');
@@ -7,7 +9,6 @@ const multer = require('multer');
 const fs = require('fs');
 const mongoose = require('mongoose');
 
-// ✨ [소셜 로그인] 핵심 부품 불러오기
 const KakaoStrategy = require('passport-kakao').Strategy;
 const NaverStrategy = require('passport-naver').Strategy;
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
@@ -22,20 +23,17 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(publicPath)); 
 app.use('/uploads', express.static(uploadsPath));
 
-// ==========================================
-// 🛡️ 보안 및 세션 설정
-// ==========================================
 app.set('trust proxy', 1);
 
 app.use(session({
-    secret: 'ssafy-pro-ultimate-2026',
+    secret: process.env.SESSION_SECRET, // ✨ [보안] 환경변수 적용
     resave: false,
     saveUninitialized: false,
     proxy: true,
     cookie: { 
         maxAge: 3600000, 
         httpOnly: true,
-        secure: false // Render 환경 필수
+        secure: false 
     }
 }));
 
@@ -48,18 +46,17 @@ app.use(passport.session());
 passport.serializeUser((user, done) => done(null, user));
 passport.deserializeUser((obj, done) => done(null, obj));
 
-// 💡 한국 시간(KST)을 정확하게 가져오는 함수
 const getKoreaTime = () => {
     return new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
 };
 
 // ==========================================
-// 📦 MongoDB 연결 및 스키마 설정
+// 📦 MongoDB 연결
 // ==========================================
-const MONGO_URI = "mongodb+srv://kkdlove999_dk_9:dk_9_qlfeld2323%21@cluster0.rx5jxnx.mongodb.net/?appName=Cluster0";
+const MONGO_URI = process.env.MONGO_URI; // ✨ [보안] 환경변수 적용
 
 mongoose.connect(MONGO_URI)
-    .then(() => console.log("✅ MongoDB 연결 성공! (데이터 영구 보존 모드)"))
+    .then(() => console.log("✅ MongoDB 연결 성공!"))
     .catch(err => console.error("❌ MongoDB 연결 실패:", err));
 
 const User = mongoose.model('User', new mongoose.Schema({ id: String, pw: String, name: String, phone: String, joinDate: String }));
@@ -68,25 +65,24 @@ const Review = mongoose.model('Review', new mongoose.Schema({ productId: String,
 const Qna = mongoose.model('Qna', new mongoose.Schema({ title: String, content: String, isSecret: Boolean, userId: String, date: String, answer: String }));
 
 // ==========================================
-// 🔑 소셜 로그인 설정 및 자동 동기화 라우터
+// 🔑 소셜 로그인 설정 (보안 처리 완료)
 // ==========================================
 const SOCIAL_CONFIG = {
-    kakao: { clientID: 'a6a044e8ea29cdd6c5eeaf7304d72c2c', clientSecret: '44A7rUNjIG2BVekjXRVuMn3T4TCqiU0F', callbackURL: 'https://ssafymall.onrender.com/auth/kakao/callback' },
-    naver: { clientID: 'vC7yingwbejXW3NM7cbi', clientSecret: 'H7v8QHA6C7', callbackURL: 'https://ssafymall.onrender.com/auth/naver/callback' },
-    google: { clientID: '927219819087-lgrv1jqklod7tr921ukb1h1r44rrta91.apps.googleusercontent.com', clientSecret: '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', callbackURL: 'https://ssafymall.onrender.com/auth/google/callback' }
-}; 
+    kakao: { clientID: process.env.KAKAO_CLIENT_ID, clientSecret: process.env.KAKAO_CLIENT_SECRET, callbackURL: 'https://ssafymall.onrender.com/auth/kakao/callback' },
+    naver: { clientID: process.env.NAVER_CLIENT_ID, clientSecret: process.env.NAVER_CLIENT_SECRET, callbackURL: 'https://ssafymall.onrender.com/auth/naver/callback' },
+    google: { clientID: process.env.GOOGLE_CLIENT_ID, clientSecret: process.env.GOOGLE_CLIENT_SECRET, callbackURL: 'https://ssafymall.onrender.com/auth/google/callback' }
+};
 
 passport.use(new KakaoStrategy(SOCIAL_CONFIG.kakao, (accessToken, refreshToken, profile, done) => done(null, profile)));
 passport.use(new NaverStrategy(SOCIAL_CONFIG.naver, (accessToken, refreshToken, profile, done) => done(null, profile)));
 passport.use(new GoogleStrategy(SOCIAL_CONFIG.google, (accessToken, refreshToken, profile, done) => done(null, profile)));
 
-/* 🚨 여기가 튕김 현상을 영구적으로 없애는 마법의 로직입니다! (소셜 유저를 일반 DB에 자동 가입) */
 app.get('/auth/kakao', passport.authenticate('kakao'));
 app.get('/auth/kakao/callback', passport.authenticate('kakao', { failureRedirect: '/login.html' }), async (req, res) => {
     const socialId = 'kakao_' + req.user.id;
     const socialName = req.user.displayName || req.user.username || '카카오 회원';
     if (!(await User.findOne({ id: socialId }))) await new User({ id: socialId, pw: 'social_user', name: socialName, phone: '소셜계정', joinDate: getKoreaTime() }).save();
-    req.session.userId = socialId; // 일반 회원과 똑같은 명찰 달아주기
+    req.session.userId = socialId;
     req.session.save(() => res.redirect('/display.html'));
 });
 
@@ -109,7 +105,7 @@ app.get('/auth/google/callback', passport.authenticate('google', { failureRedire
 });
 
 // ==========================================
-// 🛒 상품 초기 데이터 및 로그인 문지기
+// 🛒 상품 및 기타 API
 // ==========================================
 let db_products = [
     { id: 1, name: "고급 기계식 키보드", price: 120, category: "전자제품", img: "/uploads/keyboard.jpg", desc: "최고의 타건감, 개발자 필수 아이템.", stock: 50 },
@@ -119,12 +115,8 @@ let db_products = [
 
 let db_coupons = [{ code: "PRO2026", discount: 15000 }];
 
-// 🚨 이제 문지기는 일반 유저, 소셜 유저 구별 없이 완벽하게 통과시킵니다.
 const checkLogin = (req, res, next) => req.session.userId ? next() : res.status(401).json({ message: "로그인이 필요합니다." });
 
-// ==========================================
-// 🌐 기존 API 라우터 (대표님 코드 100% 원본 유지)
-// ==========================================
 app.get('/api/products', (req, res) => res.json(db_products));
 
 app.get('/api/products/:id', (req, res) => {
