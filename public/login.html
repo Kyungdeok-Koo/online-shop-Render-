@@ -229,6 +229,17 @@
         alert("안전한 소셜 로그인을 위해 우측 상단(또는 하단)의 [점 3개] 버튼을 눌러 '다른 브라우저로 열기(크롬, 사파리 등)'를 선택해 주세요!");
     }
 </script>
-
+<!-- 3. 서비스 워커(엔진) 시동 걸기 -->
+<script>
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js')
+            .then((registration) => {
+                console.log('서비스 워커가 성공적으로 등록되었습니다.');
+            })
+            .catch((error) => {
+                console.log('서비스 워커 등록 실패:', error);
+            });
+    }
+</script>
 </body>
 </html>
