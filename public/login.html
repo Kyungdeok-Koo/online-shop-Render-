@@ -218,15 +218,19 @@
         }
     </script>
 <script>
-    // 현재 사용자가 접속한 브라우저 환경을 확인합니다.
     const userAgent = navigator.userAgent.toLowerCase();
     
-    // 카카오톡, 인스타그램, 네이버 등 인앱 브라우저인지 검사합니다.
-    const isInAppBrowser = userAgent.match(/kakaotalk|instagram|naver/i);
-
-    // 인앱 브라우저라면 경고창을 띄워 안내합니다.
-    if (isInAppBrowser) {
-        alert("안전한 소셜 로그인을 위해 우측 상단(또는 하단)의 [점 3개] 버튼을 눌러 '다른 브라우저로 열기(크롬, 사파리 등)'를 선택해 주세요!");
+    // 카카오톡 브라우저에서 열렸을 때
+    if (userAgent.match(/kakaotalk/i)) {
+        // 경고창 없이 자동으로 외부 기본 브라우저(크롬, 사파리 등)를 열어버립니다!
+        location.href = 'kakaotalk://web/openExternal?url=' + encodeURIComponent(location.href);
+    } 
+    // 라인, 인스타그램 등 다른 인앱 브라우저 대응이 필요하다면 아래처럼 추가할 수 있습니다.
+    else if (userAgent.match(/line|instagram|naver/i)) {
+        // 안드로이드의 경우 intent를 사용해 강제 전환 (아이폰은 제한적이라 사이트 화면만 띄웁니다)
+        if (userAgent.match(/android/i)) {
+            location.href = 'intent://' + location.href.replace(/https?:\/\//i, '') + '#Intent;scheme=https;package=com.android.chrome;end';
+        }
     }
 </script>
 <!-- 3. 서비스 워커(엔진) 시동 걸기 -->
