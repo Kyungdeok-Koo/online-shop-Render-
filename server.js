@@ -312,7 +312,7 @@ app.post('/api/qna', checkLogin, async (req, res) => {
 });
 
 app.get('/admin', (req, res) => res.sendFile(path.join(publicPath, 'admin.html')));
-app.get('/', (req, res) => res.sendFile(path.join(publicPath, 'login.html')));
+app.get('/', (req, res) => res.sendFile(path.join(publicPath, '/public/display.html')));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 [Admin Master] Live on http://localhost:${PORT} (MongoDB Connected)`));
