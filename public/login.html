@@ -206,5 +206,18 @@
             } else alert(data.message);
         }
     </script>
+<script>
+    // 현재 사용자가 접속한 브라우저 환경을 확인합니다.
+    const userAgent = navigator.userAgent.toLowerCase();
+    
+    // 카카오톡, 인스타그램, 네이버 등 인앱 브라우저인지 검사합니다.
+    const isInAppBrowser = userAgent.match(/kakaotalk|instagram|naver/i);
+
+    // 인앱 브라우저라면 경고창을 띄워 안내합니다.
+    if (isInAppBrowser) {
+        alert("안전한 소셜 로그인을 위해 우측 상단(또는 하단)의 [점 3개] 버튼을 눌러 '다른 브라우저로 열기(크롬, 사파리 등)'를 선택해 주세요!");
+    }
+</script>
+
 </body>
 </html>
