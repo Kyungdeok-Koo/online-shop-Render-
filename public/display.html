@@ -117,5 +117,17 @@
         loadUser();
         loadProducts();
     </script>
+    <!-- 3. 서비스 워커(엔진) 시동 걸기 -->
+<script>
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js')
+            .then((registration) => {
+                console.log('서비스 워커가 성공적으로 등록되었습니다.');
+            })
+            .catch((error) => {
+                console.log('서비스 워커 등록 실패:', error);
+            });
+    }
+</script>
 </body>
 </html>
