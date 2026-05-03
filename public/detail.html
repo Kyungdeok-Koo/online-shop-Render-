@@ -3,8 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="style.css">
     <title>상품 상세 - SSAFY Mall</title>
+
+    <!-- 1. 앱 명세서(신분증) 연결 -->
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#000000">
+
+<!-- 2. 모바일 주소창 숨기기 (iOS 사파리 전용) -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<link rel="apple-touch-icon" href="/icon.png">
+
+     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container" style="max-width: 900px;">
@@ -105,5 +115,18 @@
         
         init();
     </script>
+
+    <!-- 3. 서비스 워커(엔진) 시동 걸기 -->
+<script>
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js')
+            .then((registration) => {
+                console.log('서비스 워커가 성공적으로 등록되었습니다.');
+            })
+            .catch((error) => {
+                console.log('서비스 워커 등록 실패:', error);
+            });
+    }
+</script>
 </body>
 </html>
