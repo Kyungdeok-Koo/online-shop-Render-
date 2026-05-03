@@ -311,8 +311,11 @@ app.post('/api/qna', checkLogin, async (req, res) => {
     res.json({ success: true });
 });
 
+// ==========================================
+// 🚀 화면 라우팅 (맨 아랫줄 두 줄을 이것으로 교체하세요!)
+// ==========================================
 app.get('/admin', (req, res) => res.sendFile(path.join(publicPath, 'admin.html')));
-app.get('/', (req, res) => res.sendFile(path.join(publicPath, '/public/display.html')));
+app.get('/', (req, res) => res.sendFile(path.join(publicPath, 'display.html')));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`🚀 [Admin Master] Live on http://localhost:${PORT} (MongoDB Connected)`));
