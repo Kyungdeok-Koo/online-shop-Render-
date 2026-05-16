@@ -144,7 +144,7 @@ app.post('/api/reviews', checkLogin, async (req, res) => {
 app.post('/api/check-id', async (req, res) => {
     const user = await User.findOne({ id: req.body.userId });
     if(user) res.json({ success: false }); 
-    else res.json({ success: true });      
+    else res.json({ success: true });       
 });
 
 app.post('/api/signup', async (req, res) => {
@@ -217,11 +217,33 @@ app.post('/api/check-coupon', (req, res) => {
     else res.json({ success: false, message: "유효하지 않거나 만료된 쿠폰입니다." });
 });
 
+// ✅ 재고 차감 로직이 추가된 새로운 주문 처리 API
 app.post('/api/order', checkLogin, async (req, res) => {
     const { items, totalAmount, name, address, phone } = req.body;
+
+    // 1단계: 재고 확인 및 차감
+    for (let item of items) {
+        let product = db_products.find(p => p.id == item.id);
+        
+        if (product) {
+            let orderQty = item.quantity || 1; // 장바구니에서 넘어온 수량 (없으면 1개로 간주)
+            
+            if (product.stock < orderQty) {
+                return res.json({ 
+                    success: false, 
+                    message: `[${product.name}] 상품의 재고가 부족합니다. (남은 수량: ${product.stock}개)` 
+                });
+            }
+            // 재고 깎기
+            product.stock -= orderQty;
+        }
+    }
+
+    // 2단계: 이상 없으면 DB에 주문 저장
     await new Order({ 
         id: Date.now(), userId: req.session.userId, orderDate: getKoreaTime(), items, totalAmount, name, address, phone, status: "결제완료", courier: null, trackingNumber: null
     }).save();
+    
     res.json({ success: true });
 });
 
@@ -312,7 +334,7 @@ app.post('/api/qna', checkLogin, async (req, res) => {
 });
 
 // ==========================================
-// 🚀 화면 라우팅 (맨 아랫줄 두 줄을 이것으로 교체하세요!)
+// 🚀 화면 라우팅
 // ==========================================
 app.get('/admin', (req, res) => res.sendFile(path.join(publicPath, 'admin.html')));
 app.get('/', (req, res) => res.sendFile(path.join(publicPath, 'display.html')));
