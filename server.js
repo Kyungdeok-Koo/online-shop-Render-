@@ -217,34 +217,47 @@ app.post('/api/check-coupon', (req, res) => {
     else res.json({ success: false, message: "유효하지 않거나 만료된 쿠폰입니다." });
 });
 
-// ✅ 재고 차감 로직이 추가된 새로운 주문 처리 API
+// ✅ [완벽 방어막 적용] 재고 차감 및 결제 방어 로직
 app.post('/api/order', checkLogin, async (req, res) => {
-    const { items, totalAmount, name, address, phone } = req.body;
+    try {
+        const { items, totalAmount, name, address, phone } = req.body;
 
-    // 1단계: 재고 확인 및 차감
-    for (let item of items) {
-        let product = db_products.find(p => p.id == item.id);
-        
-        if (product) {
-            let orderQty = item.quantity || 1; // 장바구니에서 넘어온 수량 (없으면 1개로 간주)
-            
-            if (product.stock < orderQty) {
-                return res.json({ 
-                    success: false, 
-                    message: `[${product.name}] 상품의 재고가 부족합니다. (남은 수량: ${product.stock}개)` 
-                });
-            }
-            // 재고 깎기
-            product.stock -= orderQty;
+        // 🚨 방어막 1: 장바구니가 비어있거나 깨졌을 때 튕겨냄 (서버 기절 원인 1순위 차단)
+        if (!items || !Array.isArray(items) || items.length === 0) {
+            return res.json({ success: false, message: "장바구니 정보를 불러올 수 없습니다. 다시 시도해주세요." });
         }
-    }
 
-    // 2단계: 이상 없으면 DB에 주문 저장
-    await new Order({ 
-        id: Date.now(), userId: req.session.userId, orderDate: getKoreaTime(), items, totalAmount, name, address, phone, status: "결제완료", courier: null, trackingNumber: null
-    }).save();
-    
-    res.json({ success: true });
+        // 1단계: 재고 확인 및 차감
+        for (let item of items) {
+            let product = db_products.find(p => p.id == item.id);
+            
+            if (product) {
+                // 🚨 방어막 2: 프론트엔드가 수량을 count로 보내든 quantity로 보내든 모두 커버
+                let orderQty = item.count || item.quantity || 1; 
+                
+                if (product.stock < orderQty) {
+                    return res.json({ 
+                        success: false, 
+                        message: `[${product.name}] 상품의 재고가 부족합니다. (남은 수량: ${product.stock}개)` 
+                    });
+                }
+                // 재고 깎기
+                product.stock -= orderQty;
+            }
+        }
+
+        // 2단계: 이상 없으면 DB에 주문 저장
+        await new Order({ 
+            id: Date.now(), userId: req.session.userId, orderDate: getKoreaTime(), items, totalAmount, name, address, phone, status: "결제완료", courier: null, trackingNumber: null
+        }).save();
+        
+        res.json({ success: true });
+
+    } catch (error) {
+        // 🚨 방어막 3: 무슨 일이 있어도 서버가 죽지 않고 백엔드 에러 로그만 조용히 남김
+        console.error("🔥 서버 치명적 오류 방어됨:", error);
+        res.json({ success: false, message: "서버 처리 중 일시적인 오류가 발생했습니다." });
+    }
 });
 
 app.get('/api/my-orders', checkLogin, async (req, res) => {
