@@ -38,7 +38,6 @@
     </div>
 
     <script>
-        // 회원님의 원래 클라이언트 키로 완벽히 복구했습니다!
         const clientKey = 'test_ck_D5GePWvyJnrK0W0k6q8gLzN97Eoq';
         const tossPayments = TossPayments(clientKey);
 
@@ -144,18 +143,18 @@
                 })
             });
 
-            // 🚨 핵심 수정 부분: 서버에서 보내준 응답 데이터를 뜯어봅니다.
             const data = await res.json();
 
-            // 백엔드가 명시적으로 성공(true)을 줬을 때만 결제 완료 처리
             if(data.success) {
                 alert('결제가 성공적으로 이뤄졌습니다');
                 localStorage.removeItem('cart');
                 sessionStorage.removeItem('orderInfo');
                 location.href = 'my-orders.html';
             } else {
-                // 실패(false)일 경우 백엔드에서 만든 에러 메시지(재고 부족 등)를 띄웁니다.
+                // 🚨 에러 알림 후 장바구니 화면으로 자연스럽게 돌려보내는 로직
                 alert(data.message || '서버 저장 중 문제가 발생했습니다.');
+                alert('장바구니 화면으로 돌아가겠습니다.');
+                location.href = 'cart.html';
             }
         }
     </script>
