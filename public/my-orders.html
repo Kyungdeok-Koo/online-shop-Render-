@@ -66,17 +66,16 @@
                 if(order.status === '배송완료') statusColor = '#10b981'; // 초록색
                 if(order.status === '구매확정') statusColor = '#8b5cf6'; // 보라색
 
-                // 🚨 [추가된 기능 1] 장바구니에 담겼던 각 상품의 이름과 수량을 깔끔하게 리스트업
+                // 🚨 'x'를 제거하고 깔끔하게 수량만 표시하도록 수정했습니다.
                 const itemsHtml = order.items.map(item => {
                     const qty = item.count || item.quantity || 1;
                     return `
                         <div class="item-row">
-                            <span>- ${item.name} <strong style="color:#3b82f6;">(x ${qty}개)</strong></span>
+                            <span>- ${item.name} <strong style="color:#3b82f6;">(${qty}개)</strong></span>
                         </div>
                     `;
                 }).join('');
 
-                // 🚨 [추가된 기능 2] 운송장 번호가 서버에 등록되어 있다면 화면에 노출
                 const trackingHtml = order.trackingNumber 
                     ? `<p style="margin-top:5px; color:#3b82f6;"><strong>🚚 택배 발송:</strong> ${order.courier} (${order.trackingNumber})</p>` 
                     : '';
@@ -116,7 +115,6 @@
     </script>
     
     <script>
-        // 🚨 구매확정 버튼 클릭 시 동작하는 로직
         async function confirmOrder(orderId) {
             if(!confirm('구매확정 처리하시겠습니까? 확정 후에는 교환 및 환불이 어렵습니다.')) return;
             
@@ -129,7 +127,7 @@
             
             if(data.success) {
                 alert('구매가 확정되었습니다! 감사합니다.');
-                location.reload(); // 새로고침하여 보라색 [구매확정] 상태로 즉시 변경
+                location.reload(); 
             } else {
                 alert(data.message || '오류가 발생했습니다.');
             }
