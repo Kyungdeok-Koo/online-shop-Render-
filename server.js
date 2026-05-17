@@ -26,7 +26,7 @@ app.use('/uploads', express.static(uploadsPath));
 app.set('trust proxy', 1);
 
 app.use(session({
-    secret: process.env.SESSION_SECRET, // ✨ [보안] 환경변수 적용
+    secret: process.env.SESSION_SECRET, 
     resave: false,
     saveUninitialized: false,
     proxy: true,
@@ -51,9 +51,9 @@ const getKoreaTime = () => {
 };
 
 // ==========================================
-// 📦 MongoDB 연결
+// 📦 MongoDB 연결 및 스키마 정의
 // ==========================================
-const MONGO_URI = process.env.MONGO_URI; // ✨ [보안] 환경변수 적용
+const MONGO_URI = process.env.MONGO_URI; 
 
 mongoose.connect(MONGO_URI)
     .then(() => console.log("✅ MongoDB 연결 성공!"))
@@ -64,8 +64,27 @@ const Order = mongoose.model('Order', new mongoose.Schema({ id: Number, userId: 
 const Review = mongoose.model('Review', new mongoose.Schema({ productId: String, content: String, userId: String, date: String }));
 const Qna = mongoose.model('Qna', new mongoose.Schema({ title: String, content: String, isSecret: Boolean, userId: String, date: String, answer: String }));
 
+// 🚨 [핵심 수정] 상품(Product)도 MongoDB에 저장하도록 공간(Schema)을 새로 만들었습니다.
+const Product = mongoose.model('Product', new mongoose.Schema({ 
+    id: Number, name: String, price: Number, category: String, img: String, desc: String, stock: Number 
+}));
+
+// 🚨 [핵심 수정] 서버가 켜질 때 DB에 상품이 비어있으면 초기 세팅을 자동으로 해줍니다.
+const initProducts = async () => {
+    const count = await Product.countDocuments();
+    if (count === 0) {
+        await Product.insertMany([
+            { id: 1, name: "고급 기계식 키보드", price: 120, category: "전자제품", img: "/uploads/keyboard.jpg", desc: "최고의 타건감, 개발자 필수 아이템.", stock: 50 },
+            { id: 2, name: "인체공학 무선 마우스", price: 90, category: "전자제품", img: "/uploads/mouse.jpg", desc: "손목이 편안한 인체공학 설계.", stock: 100 },
+            { id: 3, name: "프리미엄 사무용 의자", price: 150, category: "가구", img: "/uploads/chair.jpg", desc: "장시간 업무에도 편안한 지지력.", stock: 10 }
+        ]);
+        console.log("✅ 기본 상품 데이터가 MongoDB 금고에 안전하게 세팅되었습니다!");
+    }
+};
+initProducts();
+
 // ==========================================
-// 🔑 소셜 로그인 설정 (보안 처리 완료)
+// 🔑 소셜 로그인 설정 
 // ==========================================
 const SOCIAL_CONFIG = {
     kakao: { clientID: process.env.KAKAO_CLIENT_ID, clientSecret: process.env.KAKAO_CLIENT_SECRET, callbackURL: 'https://ssafymall.onrender.com/auth/kakao/callback' },
@@ -107,20 +126,19 @@ app.get('/auth/google/callback', passport.authenticate('google', { failureRedire
 // ==========================================
 // 🛒 상품 및 기타 API
 // ==========================================
-let db_products = [
-    { id: 1, name: "고급 기계식 키보드", price: 120, category: "전자제품", img: "/uploads/keyboard.jpg", desc: "최고의 타건감, 개발자 필수 아이템.", stock: 50 },
-    { id: 2, name: "인체공학 무선 마우스", price: 90, category: "전자제품", img: "/uploads/mouse.jpg", desc: "손목이 편안한 인체공학 설계.", stock: 100 },
-    { id: 3, name: "프리미엄 사무용 의자", price: 150, category: "가구", img: "/uploads/chair.jpg", desc: "장시간 업무에도 편안한 지지력.", stock: 10 }
-];
-
 let db_coupons = [{ code: "PRO2026", discount: 15000 }];
 
 const checkLogin = (req, res, next) => req.session.userId ? next() : res.status(401).json({ message: "로그인이 필요합니다." });
 
-app.get('/api/products', (req, res) => res.json(db_products));
+// 🚨 임시 배열 대신 DB에서 상품 목록을 꺼내옵니다.
+app.get('/api/products', async (req, res) => {
+    const products = await Product.find();
+    res.json(products);
+});
 
-app.get('/api/products/:id', (req, res) => {
-    const p = db_products.find(item => item.id == req.params.id);
+// 🚨 상품 상세 정보도 DB에서 꺼내옵니다.
+app.get('/api/products/:id', async (req, res) => {
+    const p = await Product.findOne({ id: Number(req.params.id) });
     if (p) res.json(p);
     else res.status(404).json({ message: "상품 없음" });
 });
@@ -217,22 +235,20 @@ app.post('/api/check-coupon', (req, res) => {
     else res.json({ success: false, message: "유효하지 않거나 만료된 쿠폰입니다." });
 });
 
-// ✅ [완벽 방어막 적용] 재고 차감 및 결제 방어 로직
+// ✅ DB 연동 완벽 방어막 적용! (재고 차감 후 영구 저장)
 app.post('/api/order', checkLogin, async (req, res) => {
     try {
         const { items, totalAmount, name, address, phone } = req.body;
 
-        // 🚨 방어막 1: 장바구니가 비어있거나 깨졌을 때 튕겨냄 (서버 기절 원인 1순위 차단)
         if (!items || !Array.isArray(items) || items.length === 0) {
             return res.json({ success: false, message: "장바구니 정보를 불러올 수 없습니다. 다시 시도해주세요." });
         }
 
-        // 1단계: 재고 확인 및 차감
+        // 1단계: 임시 메모리가 아닌 실제 MongoDB에서 상품을 꺼내와서 검사합니다.
         for (let item of items) {
-            let product = db_products.find(p => p.id == item.id);
+            let product = await Product.findOne({ id: item.id });
             
             if (product) {
-                // 🚨 방어막 2: 프론트엔드가 수량을 count로 보내든 quantity로 보내든 모두 커버
                 let orderQty = item.count || item.quantity || 1; 
                 
                 if (product.stock < orderQty) {
@@ -243,6 +259,9 @@ app.post('/api/order', checkLogin, async (req, res) => {
                 }
                 // 재고 깎기
                 product.stock -= orderQty;
+                
+                // 🚨 핵심 포인트: 깎인 숫자를 MongoDB 금고에 영구 저장합니다. 서버가 꺼져도 지워지지 않습니다!
+                await product.save(); 
             }
         }
 
@@ -254,7 +273,6 @@ app.post('/api/order', checkLogin, async (req, res) => {
         res.json({ success: true });
 
     } catch (error) {
-        // 🚨 방어막 3: 무슨 일이 있어도 서버가 죽지 않고 백엔드 에러 로그만 조용히 남김
         console.error("🔥 서버 치명적 오류 방어됨:", error);
         res.json({ success: false, message: "서버 처리 중 일시적인 오류가 발생했습니다." });
     }
