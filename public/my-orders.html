@@ -2,107 +2,138 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="stylesheet" href="style.css">
-    <title>마이페이지</title>
+    <title>주문/배송 현황</title>
+    <style>
+        .order-card { 
+            background: white; 
+            padding: 20px; 
+            margin-bottom: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05); 
+        }
+        .badge { 
+            padding: 4px 8px; 
+            border-radius: 4px; 
+            font-weight: bold; 
+            font-size: 0.8rem; 
+            color: white; 
+        }
+        .item-row { 
+            display: flex; 
+            justify-content: space-between; 
+            margin-bottom: 8px; 
+            font-size: 0.95rem; 
+        }
+        .info-box { 
+            background: #f8fafc; 
+            padding: 15px; 
+            border-radius: 8px; 
+            font-size: 0.9rem; 
+            line-height: 1.6; 
+            color: #475569; 
+        }
+    </style>
 </head>
 <body>
-    <div class="container" style="max-width: 800px;">
-        <header class="card" style="display:flex; justify-content:space-between; align-items:center;">
-            <h2>👤 마이페이지</h2>
-            <button class="btn btn-outline" style="width:auto; padding:10px 20px;" onclick="location.href='display.html'">홈으로</button>
-        </header>
-
-        <div class="card" style="background: linear-gradient(135deg, #2563eb, #1e40af); color:white; padding:40px; text-align:center; border:none;">
-            <h2 id="display-grade" style="font-size:2rem; margin-bottom:15px;">정보 로딩 중...</h2>
-            <p style="opacity:0.9;">누적 구매 금액: <span id="total-spent" style="font-weight:bold;">0</span>원</p>
-            <div style="background:rgba(255,255,255,0.2); height:12px; border-radius:6px; margin-top:25px; overflow:hidden;">
-                <div id="grade-bar" style="background:#ffd700; height:100%; width:0%; transition: width 1s ease;"></div>
-            </div>
+    <div class="container" style="max-width: 600px;">
+        <h2 style="text-align:center; margin-bottom: 30px;">📦 주문/배송 현황</h2>
+        <div id="orders-container">
+            <p style="text-align:center; color:#94a3b8;">주문 내역을 불러오는 중입니다...</p>
         </div>
-
-        <h3 style="margin: 30px 0 15px 0;">📦 주문/배송 현황</h3>
-        <div id="order-list"></div>
     </div>
 
     <script>
-        async function load() {
-            const userRes = await fetch('/api/user/me');
-            if(!userRes.ok) return location.href='login.html';
-            const user = await userRes.json();
+        window.onload = async () => {
+            const res = await fetch('/api/my-orders');
+            if(!res.ok) return alert('로그인이 필요하거나 서버 통신 오류가 발생했습니다.');
+            const orders = await res.json();
             
-            document.getElementById('display-grade').innerText = `✨ ${user.grade} ✨`;
-            document.getElementById('total-spent').innerText = user.totalSpent.toLocaleString();
-            
-            let nextGoal = user.grade === "일반회원" ? 300000 : 1000000;
-            if(user.grade === "VIP") nextGoal = user.totalSpent;
-            const percent = Math.min((user.totalSpent / nextGoal) * 100, 100);
-            setTimeout(() => document.getElementById('grade-bar').style.width = percent + "%", 200);
-
-            const orderRes = await fetch('/api/my-orders');
-            const orders = await orderRes.json();
-            const list = document.getElementById('order-list');
-            
+            const container = document.getElementById('orders-container');
             if(orders.length === 0) {
-                list.innerHTML = '<div class="card" style="text-align:center; padding:50px; color:#64748b;">주문 내역이 없습니다.</div>';
+                container.innerHTML = '<p style="text-align:center; color:#94a3b8;">결제하신 주문 내역이 없습니다.</p>';
                 return;
             }
 
-            list.innerHTML = orders.reverse().map(o => {
-                // 상태별 색상 (배송중 주황색 포함)
-                const colorMap = {
-                    '결제완료': '#2563eb', 
-                    '배송중': '#f59e0b',  
-                    '배송완료': '#10b981', 
-                    '구매확정': '#8b5cf6'  
-                };
-                const statusColor = colorMap[o.status] || '#2563eb';
-                const amount = String(o.totalAmount).replace(/[^0-9]/g, '');
+            // 최신 주문이 맨 위에 오도록 정렬 (내림차순)
+            orders.sort((a, b) => b.id - a.id);
+
+            container.innerHTML = orders.map(order => {
+                // 상태별 시각적 색상 분리
+                let statusColor = '#94a3b8'; // 기본 회색 (결제완료 등)
+                if(order.status === '배송중') statusColor = '#3b82f6'; // 파란색
+                if(order.status === '배송완료') statusColor = '#10b981'; // 초록색
+                if(order.status === '구매확정') statusColor = '#8b5cf6'; // 보라색
+
+                // 🚨 [추가된 기능 1] 장바구니에 담겼던 각 상품의 이름과 수량을 깔끔하게 리스트업
+                const itemsHtml = order.items.map(item => {
+                    const qty = item.count || item.quantity || 1;
+                    return `
+                        <div class="item-row">
+                            <span>- ${item.name} <strong style="color:#3b82f6;">(x ${qty}개)</strong></span>
+                        </div>
+                    `;
+                }).join('');
+
+                // 🚨 [추가된 기능 2] 운송장 번호가 서버에 등록되어 있다면 화면에 노출
+                const trackingHtml = order.trackingNumber 
+                    ? `<p style="margin-top:5px; color:#3b82f6;"><strong>🚚 택배 발송:</strong> ${order.courier} (${order.trackingNumber})</p>` 
+                    : '';
+
+                // 주문 상태에 따른 하단 버튼 처리
+                let actionButton = '';
+                if(order.status === '배송완료') {
+                    actionButton = `<button class="btn" style="width:100%; margin-top:15px; background:white; color:#10b981; border:1px solid #10b981;" onclick="confirmOrder(${order.id})">✅ 구매확정 및 리뷰 쓰러 가기</button>`;
+                } else if(order.status === '구매확정') {
+                    actionButton = `<button class="btn" style="width:100%; margin-top:15px; background:#f1f5f9; color:#8b5cf6; border:none;" onclick="alert('리뷰 작성 기능이 곧 오픈될 예정입니다!')">📝 리뷰 작성하기</button>`;
+                }
 
                 return `
-                    <div class="card" style="border-left: 5px solid ${statusColor};">
-                        <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                            <small style="color:#64748b;">${o.orderDate}</small>
-                            <span class="badge" style="background:${statusColor}; color:white; padding:4px 8px; border-radius:4px; font-weight:bold;">${o.status}</span>
-                        </div>
-                        <p style="font-weight:bold; font-size:1.1rem; margin-bottom:5px;">${o.items.map(i => i.name).join(', ')}</p>
-                        <p style="color:#ef4444; font-weight:700;">${Number(amount).toLocaleString()}원</p>
-                        
-                        <div style="background:#f8fafc; padding:12px; border-radius:8px; margin-top:15px; font-size:0.9rem; border:1px solid #e2e8f0; line-height:1.6;">
-                            <div style="color:var(--text-sub);">수령인: <strong>${o.name || '정보없음'}</strong> (${o.phone || '정보없음'})</div>
-                            <div style="color:var(--text-sub);">주소: ${o.address || '정보없음'}</div>
-                            
-                            ${(o.status === '배송중' || o.status === '배송완료') && o.trackingNumber ? `
-                                <div style="margin-top:8px; padding-top:8px; border-top:1px dashed #ddd;">
-                                    🚚 배송 정보: <strong>${o.courier}</strong> (${o.trackingNumber})
-                                </div>
-                            ` : ''}
+                    <div class="order-card" style="border-left: 5px solid ${statusColor};">
+                        <div style="display:flex; justify-content: space-between; margin-bottom: 15px; color: #64748b; font-size: 0.85rem;">
+                            <span><strong>주문번호: ${order.id}</strong><br>${order.orderDate}</span>
+                            <span class="badge" style="background:${statusColor}; height: fit-content;">${order.status}</span>
                         </div>
                         
-                        ${o.status === '배송완료' ? `
-                            <button class="btn btn-outline" style="margin-top:15px; padding:10px; width:100%; border-color:#10b981; color:#10b981;" onclick="confirmPurchase(${o.id})">✅ 구매확정 및 리뷰 쓰러 가기</button>
-                        ` : ''}
+                        <div style="margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed #e2e8f0;">
+                            ${itemsHtml}
+                        </div>
+                        
+                        <h3 style="color: #ef4444; margin-bottom: 15px; font-size: 1.1rem;">총 결제금액: ${order.totalAmount}</h3>
+                        
+                        <div class="info-box">
+                            <p><strong>수령인:</strong> ${order.name} (${order.phone})</p>
+                            <p><strong>배송지:</strong> ${order.address}</p>
+                            ${trackingHtml}
+                        </div>
+                        
+                        ${actionButton}
                     </div>
                 `;
             }).join('');
-        }
-
-        async function confirmPurchase(orderId) {
-            if(!confirm('구매확정 시 교환 및 환불이 불가합니다. 진행하시겠습니까?')) return;
+        };
+    </script>
+    
+    <script>
+        // 🚨 구매확정 버튼 클릭 시 동작하는 로직
+        async function confirmOrder(orderId) {
+            if(!confirm('구매확정 처리하시겠습니까? 확정 후에는 교환 및 환불이 어렵습니다.')) return;
             
             const res = await fetch('/api/user/order-confirm', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ orderId })
             });
+            const data = await res.json();
             
-            if((await res.json()).success) { 
-                alert('구매가 확정되었습니다!'); 
-                load(); 
+            if(data.success) {
+                alert('구매가 확정되었습니다! 감사합니다.');
+                location.reload(); // 새로고침하여 보라색 [구매확정] 상태로 즉시 변경
+            } else {
+                alert(data.message || '오류가 발생했습니다.');
             }
         }
-
-        load();
     </script>
 </body>
 </html>
